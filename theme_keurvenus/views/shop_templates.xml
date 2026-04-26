@@ -7,6 +7,7 @@
 
         <xpath expr="//div[@id='o_wsale_container']" position="attributes">
             <attribute name="class" add="kv-shop-shell" separator=" "/>
+            <attribute name="t-att-data-kv-pagination-type">website.theme_keurvenus_pagination_type</attribute>
         </xpath>
 
         <xpath expr="//div[hasclass('o_wsale_products_main_row')]" position="attributes">

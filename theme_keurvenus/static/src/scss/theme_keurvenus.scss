@@ -36,6 +36,28 @@
     max-width: 100%;
 }
 
+.theme-keurvenus.kv-storefront-host-page,
+.theme-keurvenus.kv-storefront-host-page .theme-keurvenus-wrap {
+    overflow: hidden;
+    background: #f5efe6;
+}
+
+.theme-keurvenus.kv-storefront-host-page .kv-storefront-host {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background: #f5efe6;
+}
+
+.theme-keurvenus.kv-storefront-host-page .kv-storefront-host__frame {
+    display: block;
+    width: 100%;
+    height: 100vh;
+    border: 0;
+    background: #f5efe6;
+}
+
 .theme-keurvenus h1,
 .theme-keurvenus h2,
 .theme-keurvenus h3,

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-inherit="website_sale.ProductsListPageOption" t-inherit-mode="extension">
+    <xpath expr="//BuilderRow[@label.translate='Size']" position="after">
+        <BuilderRow label.translate="Pagination" level="1">
+            <BuilderSelect action="'setKeurVenusPaginationType'">
+                <BuilderSelectItem actionValue="'pagination'">Pagination normale</BuilderSelectItem>
+                <BuilderSelectItem actionValue="'infinite_scroll'">Scroll infini</BuilderSelectItem>
+            </BuilderSelect>
+        </BuilderRow>
+    </xpath>
+</t>
+
+</templates>

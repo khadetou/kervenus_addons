@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="storefront_host" name="Keur Venus Storefront Host">
+        <t t-set="no_header" t-value="True"/>
+        <t t-set="no_footer" t-value="True"/>
+        <t t-set="body_classname" t-value="'kv-storefront-host-page'"/>
+        <t t-set="additional_title" t-value="main_object.display_name if main_object else 'Keur Venus'"/>
+        <t t-call="website.layout">
+            <div id="wrap" class="kv-storefront-host" t-att-data-storefront-path="storefront_path">
+                <script type="text/javascript">
+                    <![CDATA[
+                    (function () {
+                        window.addEventListener("message", function (event) {
+                            var data = event.data || {};
+                            var path = data.path || "";
+                            var currentPath = window.location.pathname + window.location.search + window.location.hash;
+
+                            if (data.type !== "keurvenus:storefront:navigate") {
+                                return;
+                            }
+                            if (typeof path !== "string" || path.indexOf("/") !== 0 || path.indexOf("//") === 0) {
+                                return;
+                            }
+                            if (path.indexOf("/api/") === 0 || path.indexOf("/odoo") === 0) {
+                                return;
+                            }
+                            if (currentPath !== path) {
+                                window.location.assign(path);
+                            }
+                        });
+                    })();
+                    ]]>
+                </script>
+                <iframe
+                    class="kv-storefront-host__frame"
+                    t-att-src="storefront_url"
+                    title="Keur Venus Storefront"
+                    allow="clipboard-write; fullscreen">
+                </iframe>
+            </div>
+        </t>
+    </template>
+</odoo>

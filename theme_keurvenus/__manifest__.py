@@ -21,6 +21,7 @@ Wishlist et Auth Signup.
     "data": [
         "data/ir_asset.xml",
         "views/layout.xml",
+        "views/storefront_host.xml",
         "views/header.xml",
         "views/footer.xml",
         "views/snippets.xml",
@@ -36,6 +37,10 @@ Wishlist et Auth Signup.
         "web.assets_frontend": [
             "theme_keurvenus/static/src/scss/theme_keurvenus.scss",
             "theme_keurvenus/static/src/js/theme_keurvenus.js",
+        ],
+        "website.website_builder_assets": [
+            "theme_keurvenus/static/src/website_builder/pagination_option.xml",
+            "theme_keurvenus/static/src/website_builder/pagination_option_plugin.js",
         ],
     },
     "images": [

@@ -30,6 +30,16 @@ KV_PRODUCT_FALLBACK_IMAGES = (
 class Website(models.Model):
     _inherit = "website"
 
+    theme_keurvenus_pagination_type = fields.Selection(
+        [
+            ("pagination", "Pagination normale"),
+            ("infinite_scroll", "Scroll infini"),
+        ],
+        string="Type de pagination Kër Venus",
+        default="pagination",
+        required=True,
+    )
+
     def _theme_keurvenus_get_homepage_products(self, limit=4):
         self.ensure_one()
         Product = self.env["product.template"].with_context(website_id=self.id).sudo()
