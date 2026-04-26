@@ -1,4 +1,4 @@
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch"
 
 import { AppIcon } from "@/components/icons/icon"
@@ -23,26 +23,6 @@ import type { Product } from "@/lib/types"
 
 type ImageLayout = "landscape" | "portrait" | "square"
 
-function imageFeatherMaskStyle(layout?: ImageLayout): CSSProperties {
-  const horizontal =
-    layout === "portrait"
-      ? "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.06) 8%, #000 28%, #000 72%, rgba(0,0,0,0.06) 92%, transparent 100%)"
-      : "linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%)"
-  const vertical =
-    layout === "landscape"
-      ? "linear-gradient(to bottom, transparent 0%, #000 10%, #000 90%, transparent 100%)"
-      : layout === "portrait"
-        ? "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.08) 9%, #000 20%, #000 84%, rgba(0,0,0,0.08) 94%, transparent 100%)"
-        : "linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%)"
-
-  return {
-    WebkitMaskImage: `${horizontal}, ${vertical}`,
-    WebkitMaskComposite: "source-in",
-    maskComposite: "intersect",
-    maskImage: `${horizontal}, ${vertical}`,
-  }
-}
-
 export function ProductGallery({ product }: { product: Product }) {
   const [api, setApi] = useState<CarouselApi>()
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -53,6 +33,7 @@ export function ProductGallery({ product }: { product: Product }) {
   const images = product.images.length ? product.images : [""]
 
   const selectedImage = images[selectedIndex] ?? images[0]
+  const imageKey = images.join("|")
 
   const rememberImageLayout = useCallback((src: string, image: HTMLImageElement) => {
     if (!src || imageLayouts[src]) return
@@ -107,6 +88,11 @@ export function ProductGallery({ product }: { product: Product }) {
     }
   }, [api])
 
+  useEffect(() => {
+    setSelectedIndex(0)
+    api?.scrollTo(0)
+  }, [api, imageKey, product.variantId])
+
   useGSAP(
     () => {
       if (!scopeRef.current || prefersReducedMotion()) return
@@ -123,7 +109,7 @@ export function ProductGallery({ product }: { product: Product }) {
     <div ref={scopeRef} className="grid gap-3 lg:sticky lg:top-32 lg:self-start">
       <div
         data-gallery-reveal
-        className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/68 shadow-luxury"
+        className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/74 p-2 shadow-luxury backdrop-blur"
       >
         <Carousel setApi={setApi} opts={{ align: "start", loop: images.length > 1 }}>
           <CarouselContent className="-ml-0">
@@ -132,8 +118,8 @@ export function ProductGallery({ product }: { product: Product }) {
                 <button
                   type="button"
                   className={cn(
-                    "group relative flex w-full cursor-zoom-in items-center justify-center overflow-hidden rounded-[2rem] text-left",
-                    "bg-[linear-gradient(135deg,rgba(250,247,242,0.88),rgba(232,222,209,0.66))]"
+                    "group relative flex w-full cursor-zoom-in items-center justify-center overflow-hidden rounded-[1.65rem] text-left",
+                    "bg-[linear-gradient(180deg,rgba(255,253,249,0.96)_0%,rgba(247,240,231,0.94)_58%,rgba(238,228,215,0.9)_100%)]"
                   )}
                   aria-hidden={selectedIndex !== index}
                   aria-label={
@@ -146,51 +132,35 @@ export function ProductGallery({ product }: { product: Product }) {
                     setZoomOpen(true)
                   }}
                 >
-                  {src ? (
-                    <>
-                      <img
-                        src={src}
-                        alt=""
-                        aria-hidden="true"
-                        className="absolute inset-0 h-full w-full scale-[1.08] object-cover opacity-22 blur-2xl saturate-125 transition duration-700 group-hover:scale-[1.12] group-hover:opacity-28"
-                      />
-                      <img
-                        src={src}
-                        alt=""
-                        aria-hidden="true"
-                        className="absolute inset-0 h-full w-full scale-[1.01] object-cover opacity-80 saturate-105 transition duration-700 group-hover:scale-[1.025] group-hover:opacity-85"
-                      />
-                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(250,247,242,0.02),rgba(250,247,242,0.16)_58%,rgba(250,247,242,0.44)_100%),linear-gradient(135deg,rgba(255,255,255,0.18),rgba(185,154,91,0.06))]" />
-                    </>
-                  ) : null}
+                  <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.5),transparent_38%),linear-gradient(270deg,rgba(185,154,91,0.12),transparent_36%,transparent_64%,rgba(185,154,91,0.09))]" />
+                  <div className="absolute inset-x-0 bottom-0 h-1/3 bg-[linear-gradient(to_top,rgba(23,23,23,0.07),transparent)]" />
+                  <div className="absolute inset-x-10 top-10 h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
+                  <div className="absolute inset-y-10 left-10 w-px bg-gradient-to-b from-transparent via-white/70 to-transparent" />
+                  <div className="absolute inset-y-10 right-10 w-px bg-gradient-to-b from-transparent via-charcoal/5 to-transparent" />
                   <span
                     className={cn(
-                      "relative z-10 flex h-[clamp(330px,62vh,720px)] w-full items-center justify-center p-0 md:h-[clamp(440px,66vh,780px)]",
-                      imageLayouts[src] === "portrait" ? "md:p-8 xl:p-10" : null
+                      "relative z-10 flex h-[clamp(390px,55vh,640px)] w-full items-center justify-center p-8 sm:p-10 md:h-[clamp(500px,62vh,720px)] lg:p-12 xl:p-16",
+                      imageLayouts[src] === "landscape" ? "xl:p-12" : null
                     )}
                   >
                     <img
                       src={src}
                       alt={`${product.name} image ${index + 1}`}
                       className={cn(
-                        "h-full w-full object-contain transition duration-700 group-hover:scale-[1.008]",
-                        imageLayouts[src] === "portrait" ? "opacity-[0.18] sm:opacity-[0.68]" : "opacity-95",
-                        imageLayouts[src] === "portrait"
-                          ? "drop-shadow-[0_22px_45px_rgba(38,29,20,0.14)]"
-                          : null
+                        "max-h-full max-w-full object-contain opacity-100 transition duration-700 group-hover:scale-[1.015]",
+                        "drop-shadow-[0_28px_56px_rgba(38,29,20,0.18)]"
                       )}
-                      style={imageFeatherMaskStyle(imageLayouts[src])}
                       onLoad={(event) => rememberImageLayout(src, event.currentTarget)}
                     />
                   </span>
-                  <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                  <div className="absolute left-5 top-5 flex flex-wrap gap-2">
                     {product.badges.map((badge) => (
-                      <Badge key={badge} className="rounded-full bg-ivory/92 text-charcoal">
+                      <Badge key={badge} className="rounded-full border border-white/60 bg-white/86 text-charcoal shadow-soft backdrop-blur">
                         {badge}
                       </Badge>
                     ))}
                   </div>
-                  <span className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-full bg-charcoal/72 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-ivory backdrop-blur transition group-hover:bg-charcoal">
+                  <span className="absolute bottom-5 right-5 inline-flex items-center gap-2 rounded-full bg-charcoal/78 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-ivory shadow-soft backdrop-blur transition group-hover:bg-charcoal">
                     <AppIcon icon="solar:magnifer-zoom-in-linear" className="size-4" />
                     Zoom
                   </span>
@@ -214,7 +184,7 @@ export function ProductGallery({ product }: { product: Product }) {
 
       <div
         data-gallery-reveal
-        className="flex gap-2 overflow-x-auto rounded-[1.45rem] border border-white/75 bg-white/64 p-2 shadow-soft [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-2 overflow-x-auto rounded-[1.45rem] border border-white/75 bg-white/70 p-2 shadow-soft backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {images.map((src, index) => (
           <button
@@ -225,10 +195,10 @@ export function ProductGallery({ product }: { product: Product }) {
             type="button"
             onClick={() => scrollToImage(index)}
             className={cn(
-              "relative size-20 shrink-0 overflow-hidden rounded-[1rem] border p-1 transition md:size-24 xl:size-[104px]",
+              "relative size-20 shrink-0 overflow-hidden rounded-[1rem] border p-1.5 transition md:size-24 xl:size-[104px]",
               selectedIndex === index
                 ? "border-gold bg-white shadow-soft"
-                : "border-white/80 bg-white/60 opacity-65 hover:opacity-100"
+                : "border-white/80 bg-white/64 opacity-70 hover:border-gold/35 hover:opacity-100"
             )}
             aria-label={`Afficher l’image ${index + 1} de ${product.name}`}
             aria-current={selectedIndex === index}
@@ -236,7 +206,7 @@ export function ProductGallery({ product }: { product: Product }) {
             <img
               src={src}
               alt=""
-              className="aspect-square w-full rounded-[0.9rem] bg-cream object-contain"
+              className="aspect-square w-full rounded-[0.85rem] bg-[linear-gradient(180deg,#fffdf9,#f4eee6)] object-contain"
               loading="lazy"
               onLoad={(event) => rememberImageLayout(src, event.currentTarget)}
             />

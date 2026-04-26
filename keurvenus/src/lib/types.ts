@@ -25,7 +25,49 @@ export type Product = {
   featured: boolean
   isPublished?: boolean
   odooEditUrl?: string
+  selectedAttributeValueIds?: number[]
+  selectedAttributeSummary?: string
+  variants?: ProductVariant[]
+  variantOptions?: ProductVariantOptionGroup[]
   tags: string[]
+}
+
+export type ProductVariantAttributeValue = {
+  id: number
+  attributeId: number
+  attributeName: string
+  name: string
+  displayType?: string
+  htmlColor?: string
+  image?: string
+  priceExtra?: number
+  variantIds?: number[]
+}
+
+export type ProductVariantOptionGroup = {
+  id: number
+  name: string
+  displayType: string
+  values: ProductVariantAttributeValue[]
+}
+
+export type ProductVariant = {
+  id: string
+  templateId?: number
+  variantId: number
+  name: string
+  displayName: string
+  defaultCode?: string
+  attributeValueIds: number[]
+  attributeValues: ProductVariantAttributeValue[]
+  attributeSummary: string
+  price: number
+  compareAtPrice?: number
+  currency: string
+  images: string[]
+  inStock: boolean
+  material?: string
+  color?: string
 }
 
 export type StorefrontCategoryLink = {

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_variant_normal_form_media_keurvenus" model="ir.ui.view">
+        <field name="name">product.product.normal.form.variant.media.keurvenus</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='product_template_images']" position="replace">
+                <group colspan="2" name="product_variant_images" string="Média eCommerce de cette variante" invisible="not sale_ok">
+                    <field
+                        colspan="2"
+                        name="product_variant_image_ids"
+                        class="o_website_sale_image_list"
+                        context="{'default_name': name, 'default_product_variant_id': id}"
+                        mode="kanban"
+                        add-label="Ajouter un média pour cette variante"
+                        nolabel="1"
+                        widget="x2_many_media_viewer"
+                        options="{'convert_to_webp': True}"
+                    />
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_variant_form_media_keurvenus" model="ir.ui.view">
+        <field name="name">product.product.form.variant.media.keurvenus</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="website_sale.product_product_view_form_easy_inherit_website_sale"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='product_variant_images']" position="attributes">
+                <attribute name="string">Média de cette variante uniquement</attribute>
+            </xpath>
+            <xpath expr="//field[@name='product_variant_image_ids']" position="attributes">
+                <attribute name="context">{'default_name': name, 'default_product_variant_id': id}</attribute>
+                <attribute name="add-label">Ajouter un média pour cette variante</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

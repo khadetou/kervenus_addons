@@ -6,6 +6,9 @@ import type {
   PortalDashboard,
   PortalDocument,
   Product,
+  ProductVariant,
+  ProductVariantAttributeValue,
+  ProductVariantOptionGroup,
   StorefrontConfig,
   StorefrontFilters,
   StorefrontSession,
@@ -81,8 +84,89 @@ function currencyName(item: OdooProductPayload) {
   return item.price?.currency?.name || "XOF"
 }
 
+function compareAtAmount(item: OdooProductPayload) {
+  const compareAtPrice = Number(item.price?.compare_amount || 0)
+  return compareAtPrice > 0 ? compareAtPrice : undefined
+}
+
 function categoryHref(category: Pick<Collection, "slug">) {
   return `/shop?category=${encodeURIComponent(category.slug)}`
+}
+
+function mapGalleryImages(item: OdooProductPayload) {
+  const galleryImages = Array.isArray(item.gallery)
+    ? item.gallery.map((image: Record<string, any>) => normalizeAssetUrl(image.image_url)).filter(Boolean)
+    : []
+  return galleryImages.length ? galleryImages : [normalizeAssetUrl(item.image_url)].filter(Boolean)
+}
+
+function mapVariantValue(item: Record<string, any>): ProductVariantAttributeValue {
+  return {
+    id: Number(item.id || 0),
+    attributeId: Number(item.attribute_id || item.attributeId || 0),
+    attributeName: item.attribute_name || item.attributeName || "Option",
+    name: item.name || "Option",
+    displayType: item.display_type || item.displayType || undefined,
+    htmlColor: item.html_color || item.htmlColor || undefined,
+    image: normalizeAssetUrl(item.image_url || item.image || ""),
+    priceExtra: Number(item.price_extra || item.priceExtra || 0),
+    variantIds: Array.isArray(item.variant_ids)
+      ? item.variant_ids.map((id: unknown) => Number(id)).filter(Boolean)
+      : undefined,
+  }
+}
+
+function mapOdooVariant(item: OdooProductPayload, fallback: Product): ProductVariant {
+  const attributeValues = Array.isArray(item.attribute_values)
+    ? item.attribute_values.map(mapVariantValue).filter((value) => value.id)
+    : []
+  const images = mapGalleryImages(item)
+  const compareAtPrice = compareAtAmount(item)
+  const colorValue = attributeValues.find((value) =>
+    /couleur|color/i.test(value.attributeName)
+  )
+  const materialValue = attributeValues.find((value) =>
+    /mati[eè]re|material/i.test(value.attributeName)
+  )
+  const variantId = Number(item.product_id ?? item.variant_id ?? item.id ?? 0)
+
+  return {
+    id: String(variantId || item.id || item.display_name || item.name),
+    templateId: Number(item.template_id || fallback.templateId || 0) || undefined,
+    variantId,
+    name: item.name || item.display_name || fallback.name,
+    displayName: item.display_name || item.name || fallback.name,
+    defaultCode: item.default_code || undefined,
+    attributeValueIds: Array.isArray(item.attribute_value_ids)
+      ? item.attribute_value_ids.map((id: unknown) => Number(id)).filter(Boolean)
+      : attributeValues.map((value) => value.id),
+    attributeValues,
+    attributeSummary: attributeValues.map((value) => value.name).filter(Boolean).join(" · "),
+    price: priceAmount(item),
+    compareAtPrice,
+    currency: currencyName(item) || fallback.currency,
+    images: images.length ? images : fallback.images,
+    inStock: Boolean(
+      item.is_combination_possible !== false &&
+        (item.allow_out_of_stock_order || Number(item.free_qty || item.qty_available || 0) > 0)
+    ),
+    material: materialValue?.name || fallback.material,
+    color: colorValue?.name || fallback.color,
+  }
+}
+
+function mapVariantOptions(item: OdooProductPayload): ProductVariantOptionGroup[] {
+  if (!Array.isArray(item.variant_options)) return []
+  return item.variant_options
+    .map((group: Record<string, any>) => ({
+      id: Number(group.id || 0),
+      name: group.name || "Option",
+      displayType: group.display_type || group.displayType || "radio",
+      values: Array.isArray(group.values)
+        ? group.values.map(mapVariantValue).filter((value) => value.id)
+        : [],
+    }))
+    .filter((group) => group.id && group.values.length)
 }
 
 export function mapOdooProduct(item: OdooProductPayload): Product {
@@ -100,11 +184,8 @@ export function mapOdooProduct(item: OdooProductPayload): Product {
         parentName: categoryItem.parent_name || undefined,
       }))
     : []
-  const galleryImages = Array.isArray(item.gallery)
-    ? item.gallery.map((image: Record<string, any>) => normalizeAssetUrl(image.image_url)).filter(Boolean)
-    : []
-  const images = galleryImages.length ? galleryImages : [normalizeAssetUrl(item.image_url)].filter(Boolean)
-  const compareAtPrice = Number(item.price?.compare_amount || 0)
+  const images = mapGalleryImages(item)
+  const compareAtPrice = compareAtAmount(item)
   const badges = [
     item.ribbon,
     item.price?.discounted ? "Offre" : null,
@@ -114,8 +195,9 @@ export function mapOdooProduct(item: OdooProductPayload): Product {
   const productTags = Array.isArray(item.tags)
     ? item.tags.map((tag: Record<string, any>) => tag.name || tag.slug).filter(Boolean)
     : []
+  const selectedCombination = item.selected_combination || {}
 
-  return {
+  const product: Product = {
     id: String(templateId || variantId || item.slug || item.name),
     templateId: templateId || undefined,
     variantId: variantId || undefined,
@@ -131,7 +213,7 @@ export function mapOdooProduct(item: OdooProductPayload): Product {
     shortDescription: item.subtitle || item.shortDescription || category,
     description: item.description_plain || item.subtitle || item.description || "Sélection raffinée Kër Venus.",
     price: priceAmount(item),
-    compareAtPrice: compareAtPrice > 0 ? compareAtPrice : undefined,
+    compareAtPrice,
     currency: currencyName(item),
     images: images.length ? images : fallbackProducts[0]?.images || [],
     badges: badges.length ? badges : [category],
@@ -142,8 +224,28 @@ export function mapOdooProduct(item: OdooProductPayload): Product {
     featured: Boolean(item.featured || item.ribbon || item.price?.discounted),
     isPublished: Boolean(item.is_published ?? item.published ?? true),
     odooEditUrl: normalizeAssetUrl(item.odoo_edit_url),
+    selectedAttributeValueIds: Array.isArray(selectedCombination.attribute_value_ids)
+      ? selectedCombination.attribute_value_ids.map((id: unknown) => Number(id)).filter(Boolean)
+      : undefined,
+    selectedAttributeSummary: selectedCombination.attribute_summary || undefined,
+    variantOptions: mapVariantOptions(item),
     tags: [category, collection, item.ribbon, ...productTags].filter(Boolean),
   }
+  const variants = Array.isArray(item.variants)
+    ? item.variants.map((variantItem: OdooProductPayload) => mapOdooVariant(variantItem, product))
+    : []
+  product.variants = variants
+
+  const selectedVariant =
+    variants.find((variant) => variant.variantId === variantId) ||
+    variants.find((variant) => variant.variantId === Number(selectedCombination.product_id))
+  if (selectedVariant) {
+    product.variantId = selectedVariant.variantId
+    product.selectedAttributeValueIds = selectedVariant.attributeValueIds
+    product.selectedAttributeSummary = selectedVariant.attributeSummary
+  }
+
+  return product
 }
 
 function mapOdooCollection(item: OdooCollectionPayload, index: number): Collection {

@@ -13,6 +13,13 @@ from odoo.addons.website.controllers.main import Website
 from odoo.addons.website_sale.controllers.main import WebsiteSale
 
 
+LOCAL_STOREFRONT_HOSTS = {"127.0.0.1", "localhost", "::1"}
+STOREFRONT_WRAPPER_URLS = {
+    "local": "http://localhost:3000",
+    "production": "https://www.keurvenus.sn",
+}
+
+
 class KeurVenusWebsite(Website):
     @route()
     def index(self, **kw):
@@ -281,7 +288,7 @@ class KeurVenusStorefrontController(http.Controller):
 
     def _serialize_product(self, product, index=0, featured=False):
         category = self._main_public_category(product)
-        variant = product.product_variant_id or product.product_variant_ids[:1]
+        variant = self._default_variant(product)
         summary = html2plaintext(product.description_sale or "").strip()
         category_name = category.name if category else (product.categ_id.name or "Maison")
         collection_name = (
@@ -323,10 +330,11 @@ class KeurVenusStorefrontController(http.Controller):
                 }
                 for category_item in product.public_categ_ids.sorted(lambda categ: (categ.parent_path or "", categ.sequence, categ.id))
             ],
-            "image_url": f"/web/image/product.template/{product.id}/image_512",
-            "gallery": [
-                {"image_url": f"/web/image/product.template/{product.id}/image_1024"},
-            ],
+            "image_url": self._product_image_url(variant or product, "image_512"),
+            "gallery": self._serialize_product_images(variant or product),
+            "variants": self._serialize_product_variants(product),
+            "variant_options": self._serialize_variant_options(product),
+            "selected_combination": self._serialize_selected_combination(variant),
             "is_published": bool(product.is_published),
             "published": bool(product.is_published),
             "odoo_edit_url": backoffice_url(
@@ -343,6 +351,162 @@ class KeurVenusStorefrontController(http.Controller):
                 for tag in product.product_tag_ids.filtered(lambda tag: tag.visible_to_customers)
             ],
         }
+
+    def _default_variant(self, product):
+        variant_id = product._get_first_possible_variant_id()
+        variant = request.env["product.product"].sudo().browse(variant_id).exists() if variant_id else False
+        if product.valid_product_template_attribute_line_ids:
+            return (
+                variant.filtered("product_template_attribute_value_ids")
+                or product.product_variant_ids.filtered("product_template_attribute_value_ids")[:1]
+                or variant
+                or product.product_variant_id
+                or product.product_variant_ids[:1]
+            )
+        return variant or product.product_variant_id or product.product_variant_ids[:1]
+
+    def _serialize_product_variants(self, product):
+        variants = product.product_variant_ids.filtered(lambda variant: variant.active)
+        if product.valid_product_template_attribute_line_ids:
+            variants = variants.filtered("product_template_attribute_value_ids")
+        variants = variants.sorted(
+            lambda variant: (variant.default_code or "", variant.id)
+        )
+        return [self._serialize_variant(product, variant) for variant in variants]
+
+    def _serialize_variant(self, product, variant):
+        combination_info = variant._get_combination_info_variant()
+        currency = combination_info.get("currency") or product.currency_id
+        attribute_values = variant.product_template_attribute_value_ids.sorted(
+            lambda value: (
+                value.attribute_id.sequence,
+                value.attribute_id.id,
+                value.product_attribute_value_id.sequence,
+                value.id,
+            )
+        )
+        price = float(combination_info.get("price") or variant.lst_price or product.list_price or 0.0)
+        list_price = float(combination_info.get("list_price") or price)
+        compare_price = list_price if combination_info.get("has_discounted_price") and list_price > price else 0.0
+        free_qty = float(combination_info.get("free_qty") or 0.0)
+
+        return {
+            "id": variant.id,
+            "template_id": product.id,
+            "product_id": variant.id,
+            "name": variant.with_context(display_default_code=False).display_name,
+            "display_name": combination_info.get("display_name") or variant.display_name,
+            "default_code": variant.default_code or "",
+            "attribute_value_ids": attribute_values.ids,
+            "attribute_values": [
+                self._serialize_variant_value(value)
+                for value in attribute_values
+            ],
+            "price": {
+                "amount": price,
+                "compare_amount": compare_price,
+                "discounted": bool(compare_price),
+                "currency": self._currency(currency),
+            },
+            "image_url": self._product_image_url(variant, "image_512"),
+            "gallery": self._serialize_product_images(variant),
+            "is_combination_possible": bool(combination_info.get("is_combination_possible", True)),
+            "free_qty": free_qty,
+            "qty_available": free_qty,
+            "allow_out_of_stock_order": bool(combination_info.get("allow_out_of_stock_order", True)),
+        }
+
+    def _serialize_variant_options(self, product):
+        lines = product.valid_product_template_attribute_line_ids.sorted(
+            lambda line: (line.attribute_id.sequence, line.attribute_id.id, line.sequence, line.id)
+        )
+        variant_records = product.product_variant_ids.filtered(lambda variant: variant.active)
+        groups = []
+        for line in lines:
+            attribute = line.attribute_id
+            values = line.product_template_value_ids.sorted(
+                lambda value: (value.product_attribute_value_id.sequence, value.id)
+            )
+            value_items = []
+            for value in values:
+                variant_ids = [
+                    variant.id
+                    for variant in variant_records
+                    if value in variant.product_template_attribute_value_ids
+                ]
+                value_items.append({
+                    **self._serialize_variant_value(value),
+                    "variant_ids": variant_ids,
+                })
+            if value_items:
+                groups.append({
+                    "id": attribute.id,
+                    "name": attribute.name,
+                    "display_type": attribute.display_type,
+                    "values": value_items,
+                })
+        return groups
+
+    def _serialize_variant_value(self, value):
+        attribute_value = value.product_attribute_value_id
+        return {
+            "id": value.id,
+            "attribute_id": value.attribute_id.id,
+            "attribute_name": value.attribute_id.name,
+            "name": value.name,
+            "display_type": value.display_type,
+            "html_color": value.html_color or "",
+            "image_url": (
+                f"/web/image/product.attribute.value/{attribute_value.id}/image"
+                if getattr(attribute_value, "image", False)
+                else ""
+            ),
+            "price_extra": float(value.price_extra or 0.0),
+        }
+
+    def _serialize_selected_combination(self, variant):
+        if not variant:
+            return False
+        values = variant.product_template_attribute_value_ids.sorted(
+            lambda value: (
+                value.attribute_id.sequence,
+                value.attribute_id.id,
+                value.product_attribute_value_id.sequence,
+                value.id,
+            )
+        )
+        return {
+            "template_id": variant.product_tmpl_id.id,
+            "product_id": variant.id,
+            "attribute_value_ids": values.ids,
+            "attribute_summary": values._get_combination_name(),
+        }
+
+    def _serialize_product_images(self, product_or_variant):
+        images = []
+        seen = set()
+        for image_record in self._product_gallery_records(product_or_variant):
+            key = (image_record._name, image_record.id)
+            if key in seen:
+                continue
+            seen.add(key)
+            images.append({
+                "id": image_record.id,
+                "model": image_record._name,
+                "image_url": self._product_image_url(image_record, "image_1024"),
+            })
+        return images
+
+    def _product_gallery_records(self, product_or_variant):
+        if (
+            product_or_variant._name == "product.product"
+            and product_or_variant.product_variant_image_ids
+        ):
+            return [product_or_variant] + list(product_or_variant.product_variant_image_ids)
+        return product_or_variant._get_images()
+
+    def _product_image_url(self, record, size):
+        return f"/web/image/{record._name}/{record.id}/{size}"
 
     def _serialize_category(self, category, Product, product_domain):
         if not category:
@@ -636,11 +800,22 @@ def backoffice_url(path="/"):
 
 
 def storefront_url(path="/"):
-    base_url = (
-        getenv("KEURVENUS_STOREFRONT_URL")
-        or request.env["ir.config_parameter"].sudo().get_param("theme_keurvenus.storefront_url")
-        or "http://localhost:3000"
-    )
-    base_url = base_url.rstrip("/")
+    base_url = storefront_base_url()
     normalized_path = path if path.startswith("/") else f"/{path}"
-    return f"{base_url}{normalized_path}"
+    return f"{base_url.rstrip('/')}{normalized_path}"
+
+
+def storefront_base_url():
+    override_url = getenv("KEURVENUS_STOREFRONT_URL")
+    if override_url:
+        return override_url
+
+    environment = "local" if is_local_storefront_request() else "production"
+    return STOREFRONT_WRAPPER_URLS[environment]
+
+
+def is_local_storefront_request():
+    host = request.httprequest.host.split(":", 1)[0].strip("[]").lower()
+    forwarded_host = (request.httprequest.headers.get("X-Forwarded-Host") or "").split(",", 1)[0]
+    forwarded_host = forwarded_host.split(":", 1)[0].strip("[]").lower()
+    return host in LOCAL_STOREFRONT_HOSTS or forwarded_host in LOCAL_STOREFRONT_HOSTS

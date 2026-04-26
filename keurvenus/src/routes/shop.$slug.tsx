@@ -4,8 +4,10 @@ import { useEffect } from "react"
 import { ProductGallery } from "@/components/product/product-gallery"
 import { ProductInfo } from "@/components/product/product-info"
 import { RelatedProducts } from "@/components/product/related-products"
+import { ProductVariantSelector } from "@/components/product/product-variant-selector"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useProduct } from "@/hooks/use-product"
+import { useProductVariantSelection } from "@/lib/product-variants"
 
 export const Route = createFileRoute("/shop/$slug")({ component: ProductPage })
 
@@ -29,11 +31,28 @@ function ProductPage() {
     )
   }
 
+  return <ProductPageContent product={product} />
+}
+
+function ProductPageContent({ product }: { product: NonNullable<ReturnType<typeof useProduct>["data"]> }) {
+  const variantSelection = useProductVariantSelection(product)
+
   return (
     <main>
       <section className="mx-auto mt-10 grid w-[min(1640px,calc(100vw-32px))] items-start gap-7 lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)] xl:gap-8">
-        <ProductGallery product={product} />
-        <ProductInfo product={product} />
+        <ProductGallery product={variantSelection.product} />
+        <ProductInfo
+          product={variantSelection.product}
+          variantSelector={
+            <ProductVariantSelector
+              product={product}
+              selectedVariant={variantSelection.selectedVariant}
+              selectedValueIds={variantSelection.selectedValueIds}
+              onSelectValue={variantSelection.selectValue}
+              isValueAvailable={variantSelection.isValueAvailable}
+            />
+          }
+        />
       </section>
       <RelatedProducts currentSlug={product.slug} collection={product.collection} />
     </main>

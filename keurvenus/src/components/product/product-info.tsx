@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 
 import { AppIcon } from "@/components/icons/icon"
 import { ProductTabs } from "@/components/product/product-tabs"
@@ -12,7 +12,13 @@ import { formatPrice } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Product } from "@/lib/types"
 
-export function ProductInfo({ product }: { product: Product }) {
+export function ProductInfo({
+  product,
+  variantSelector,
+}: {
+  product: Product
+  variantSelector?: ReactNode
+}) {
   const { addProduct } = useCart()
   const { data: session } = useSession()
   const publishProduct = usePublishProduct()
@@ -141,6 +147,8 @@ export function ProductInfo({ product }: { product: Product }) {
       <p className="mt-5 max-w-2xl text-base leading-8 text-warm-gray">
         {product.description}
       </p>
+
+      {variantSelector}
 
       <div className="mt-7 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="flex items-center gap-2 text-sm text-warm-gray">
