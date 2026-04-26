@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="theme_keurvenus_homepage_content" name="Theme Keur Venus Homepage Content">
+        <div id="wrap" class="kv-homepage-wrap">
+            <div class="kv-home-grid">
+                <div id="oe_structure_theme_keurvenus_home_left" class="kv-left-column oe_structure oe_structure_not_nearest">
+                    <div data-oe-call="theme_keurvenus.s_keurvenus_hero"/>
+                    <div data-oe-call="theme_keurvenus.s_keurvenus_collections"/>
+                    <div data-oe-call="theme_keurvenus.s_keurvenus_products"/>
+                    <div data-oe-call="theme_keurvenus.s_keurvenus_feature_banner"/>
+                    <div data-oe-call="theme_keurvenus.s_keurvenus_story_grid"/>
+                </div>
+                <div id="oe_structure_theme_keurvenus_home_right" class="kv-right-column oe_structure oe_structure_not_nearest">
+                    <div data-oe-call="theme_keurvenus.s_keurvenus_selection_panel"/>
+                    <div data-oe-call="theme_keurvenus.s_keurvenus_mini_banner"/>
+                    <div data-oe-call="theme_keurvenus.s_keurvenus_testimonial"/>
+                    <div data-oe-call="theme_keurvenus.s_keurvenus_newsletter"/>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="theme_keurvenus_homepage" inherit_id="website.homepage" name="Theme Keur Venus Homepage">
+        <xpath expr="//t[@t-call='website.layout']" position="replace">
+            <t t-call="website.layout" pageName.f="homepage">
+                <t t-call="theme_keurvenus.theme_keurvenus_homepage_content"/>
+            </t>
+        </xpath>
+    </template>
+</odoo>

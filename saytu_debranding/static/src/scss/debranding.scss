@@ -1,0 +1,62 @@
+// ============================================================================
+// Saytu Debranding Styles
+// ============================================================================
+
+// Hide any remaining Odoo branding elements
+// This is a catch-all for any elements that might have escaped template inheritance
+
+// Hide Odoo logo in various places
+.o_odoo_logo,
+.odoo_logo,
+[alt="Odoo"],
+[title="Odoo"] {
+    // Optionally hide or replace
+    // display: none !important;
+}
+
+// Customize brand promotion area
+.o_brand_promotion {
+    // Custom styling for Saytu branding
+    font-size: 0.875rem;
+    color: #6c757d;
+    
+    a {
+        text-decoration: none;
+        color: inherit;
+        
+        &:hover {
+            color: #495057;
+        }
+    }
+}
+
+// Database manager page customizations
+.o_database_list {
+    // Custom styling for database list page
+}
+
+// Login page customizations
+.oe_login_form {
+    // Custom styling for login form
+}
+
+// Remove or hide specific Odoo references
+// You can add more specific selectors here as needed
+
+// Example: Hide elements containing "odoo.com" in href
+a[href*="odoo.com"] {
+    // Optionally hide these links
+    // display: none !important;
+}
+
+// Custom Saytu branding colors (optional)
+:root {
+    --saytu-primary-color: #007bff;
+    --saytu-secondary-color: #6c757d;
+}
+
+// Apply Saytu colors to brand elements
+.badge.text-bg-light {
+    // Custom badge styling for Saytu
+}
+

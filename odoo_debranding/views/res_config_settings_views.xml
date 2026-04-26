@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form_debranding" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.odoo.debranding</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="50"/>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Branding section after the PWA settings -->
+            <xpath expr="//block[@id='pwa_settings']" position="after">
+                <block title="Backend Branding" id="debranding_settings" groups="base.group_system">
+                    <setting id="backend_title_setting" 
+                             string="Backend Title"
+                             help="Customize the title shown in browser tabs for the backend interface.">
+                        <field name="backend_title" placeholder="Odoo"/>
+                        <div class="text-muted mt-2">
+                            <small>This title will replace "Odoo" in browser tabs when using the backend.</small>
+                        </div>
+                    </setting>
+                    <setting id="backend_favicon_setting" 
+                             string="Backend Favicon"
+                             help="Upload a custom favicon for the backend interface.">
+                        <field name="backend_favicon" widget="image" class="oe_avatar"/>
+                        <div class="text-muted mt-2">
+                            <small>
+                                <strong>Supported formats:</strong> ICO, PNG, SVG, GIF<br/>
+                                <strong>Recommended size:</strong> 32x32 or 64x64 pixels<br/>
+                                <strong>Max file size:</strong> 100KB
+                            </small>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
+

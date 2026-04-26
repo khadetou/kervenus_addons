@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- ============================================================ -->
+    <!-- Database Manager Page Debranding -->
+    <!-- ============================================================ -->
+    
+    <!-- Note: The database manager uses a static HTML file (database_manager.qweb.html)
+         which cannot be easily inherited. We'll create a custom controller to handle this.
+         For now, we'll document the changes needed in the README. -->
+    
+    <!-- Alternative: We can create a custom static HTML file that replaces the original -->
+    
+</odoo>
+

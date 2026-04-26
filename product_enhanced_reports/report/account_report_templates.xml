@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        FIXES for invoice report:
+        1. Fixed xpath to match the correct structure
+        2. Added HTML sanitization via get_description_sale_for_pdf() method
+        3. Preserve line.name content when it differs from product description
+        4. Handle both product lines and non-product lines properly
+        5. Avoid content duplication between line.name and description_sale
+    -->
+    <template id="report_invoice_document_enhanced" inherit_id="account.report_invoice_document">
+
+        <xpath expr="//td[@name='line_name_td']" position="attributes">
+            <attribute name="t-att-colspan">3 + (1 if display_discount else 0) + (1 if display_taxes else 0)</attribute>
+        </xpath>
+
+        <xpath expr="//td[@name='td_quantity']" position="replace">
+            <td name="td_quantity" class="o_td_quantity text-end" style="vertical-align: top;">
+                <span t-field="line.quantity" class="text-nowrap">3.00</span>
+                <span t-field="line.product_uom_id">units</span>
+                <span t-if="line.product_uom_id != line.product_id.uom_id" class="text-muted small">
+                    <br/>
+                    <t t-set="product_uom_qty" t-value="line.product_uom_id._compute_quantity(line.quantity, line.product_id.uom_id)"/>
+                    <span t-out="product_uom_qty" t-options="{'widget': 'float', 'decimal_precision': 'Product Unit'}" data-oe-demo="3.00"/>
+                    <span t-field="line.product_id.uom_id" data-oe-demo="units"/>
+                </span>
+            </td>
+        </xpath>
+
+        <xpath expr="//td[@name='td_price_unit']" position="replace">
+            <td name="td_price_unit"
+                t-attf-class="text-end text-nowrap {{ 'd-none d-md-table-cell' if report_type == 'html' else '' }}"
+                style="vertical-align: top;">
+                <span t-if="not hide_prices"
+                    t-field="line.price_unit"
+                    t-options="{'widget': 'monetary', 'display_currency': o.currency_id}">
+                    9.00
+                </span>
+            </td>
+        </xpath>
+
+        <xpath expr="//td[@name='td_subtotal']" position="attributes">
+            <attribute name="style">white-space: nowrap; vertical-align: top;</attribute>
+        </xpath>
+
+        <!-- Replace the product name display in invoice lines -->
+        <!-- FIXED: More specific xpath to target only the product name cell -->
+        <xpath expr="//t[@name='account_invoice_line_accountable']/td[@name='account_invoice_line_name']" position="replace">
+            <td name="account_invoice_line_name"
+                t-att-class="padding_class"
+                style="vertical-align: top; white-space: normal; word-break: break-word; overflow-wrap: anywhere;">
+                <!-- Display product name in bold -->
+                <strong t-if="line.product_id">
+                    <span t-field="line.product_id.display_name" style="white-space: normal;">Product Name</span>
+                </strong>
+                <strong t-else="">
+                    <t t-set="name_parts" t-value="(line.name or '').split('\n', 1)"/>
+                    <span t-out="name_parts[0] if name_parts else ''" style="white-space: normal;">Product Name</span>
+                </strong>
+                <!-- Display description below the product name -->
+                <t t-if="line.product_id and line.product_id.description_sale">
+                    <!-- Use sanitized HTML via method for PDF compatibility -->
+                    <div t-out="line.product_id.get_description_sale_for_pdf()"
+                          class="text-muted small mt-1"
+                          style="display: block; font-size: 0.9em; color: #666; white-space: normal; word-break: break-word; overflow-wrap: anywhere;"/>
+                </t>
+                <!-- Show line.name description when no product_id or no description_sale -->
+                <t t-elif="not line.product_id or (line.name and line.product_id and not line.product_id.description_sale)">
+                    <t t-set="name_parts" t-value="(line.name or '').split('\n', 1)"/>
+                    <t t-if="len(name_parts) > 1 and name_parts[1]">
+                        <br/>
+                        <span t-out="name_parts[1]" class="text-muted small" style="white-space: normal; word-break: break-word; overflow-wrap: anywhere;">Description</span>
+                    </t>
+                </t>
+            </td>
+        </xpath>
+
+    </template>
+
+</odoo>

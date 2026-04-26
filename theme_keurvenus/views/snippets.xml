@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="theme_keurvenus_snippet_group" inherit_id="website.snippets" name="Theme Keur Venus Snippets">
+        <xpath expr="//snippets[@id='snippet_groups']//t[@snippet-group='custom']" position="after">
+            <t
+                snippet-group="theme_keurvenus"
+                t-snippet="website.s_snippet_group"
+                string="Keur Venus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/home-top.png"
+            />
+        </xpath>
+        <xpath expr="//snippets[@id='snippet_structure']//t[@t-snippet='website.s_banner']" position="after">
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_hero"
+                string="Hero Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/home-top.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/home-top.png"
+            />
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_collections"
+                string="Univers Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/home-top.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/home-top.png"
+            />
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_products"
+                string="Produits Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/products-and-feature.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/products-and-feature.png"
+            />
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_feature_banner"
+                string="Banniere Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/feature-banner.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/feature-banner.png"
+            />
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_story_grid"
+                string="Editorial Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/editorial-and-feature.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/editorial-and-feature.png"
+            />
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_sidebar_stack"
+                string="Sidebar Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/selection-and-offer.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/selection-and-offer.png"
+            />
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_selection_panel"
+                string="Selection Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/selection-and-offer.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/selection-and-offer.png"
+            />
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_mini_banner"
+                string="Offre Maison Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/selection-and-offer.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/selection-and-offer.png"
+            />
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_testimonial"
+                string="Temoignage Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/testimonial-and-newsletter.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/testimonial-and-newsletter.png"
+            />
+            <t
+                t-snippet="theme_keurvenus.s_keurvenus_newsletter"
+                string="Newsletter Keur Venus"
+                group="theme_keurvenus"
+                t-thumbnail="/theme_keurvenus/static/src/img/keurvenus/snippets/testimonial-and-newsletter.png"
+                t-image-preview="/theme_keurvenus/static/src/img/keurvenus/snippets/testimonial-and-newsletter.png"
+            />
+        </xpath>
+    </template>
+
+    <template id="theme_keurvenus_runtime_context" name="Theme Keur Venus Runtime Context">
+        <t t-set="kv_env" t-value="request and request.env or env"/>
+        <t t-set="kv_website_model" t-value="kv_env['website']"/>
+        <t t-set="kv_website_id" t-value="kv_env.context.get('website_id')"/>
+        <t t-set="kv_website" t-value="(request and request.env['website'].get_current_website()) or kv_website_model.get_current_website() or (kv_website_id and kv_website_model.browse(kv_website_id)) or kv_website_model.browse()"/>
+        <t t-set="kv_has_website" t-value="kv_website.exists()"/>
+        <t t-set="kv_currency" t-value="kv_has_website and kv_website.currency_id or kv_env.company.currency_id"/>
+        <t t-set="kv_categories" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_category_cards(limit=6) or []"/>
+        <t t-set="kv_products" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_cards(limit=4) or []"/>
+        <t t-set="kv_product_filters" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_filters(product_cards=kv_products, category_cards=kv_categories, limit=3) or []"/>
+        <t t-out="0"/>
+    </template>
+
+    <template id="theme_keurvenus_home_product_card" name="Theme Keur Venus Home Product Card">
+        <t t-set="product" t-value="product_card['product']"/>
+        <t t-set="product_url" t-value="product.website_url or '/shop'"/>
+        <t t-set="product_category" t-value="product_card['category'] or False"/>
+        <t t-set="product_variant_id" t-value="product_card['variant_id']"/>
+        <t t-set="product_image" t-value="product_card['image_url'] or fallback_image"/>
+        <article class="kv-product-card">
+            <div class="kv-product-card__visual" t-attf-style="background-image:url('#{product_image}')">
+                <button t-if="product_variant_id" type="button" class="kv-wish-btn o_add_wishlist" t-att-data-product-template-id="product.id" t-att-data-product-product-id="product_variant_id" data-action="o_wishlist" aria-label="Ajouter aux favoris">
+                    <iconify-icon icon="solar:heart-linear"/>
+                </button>
+            </div>
+            <div class="kv-product-card__meta">
+                <div class="kv-product-card__copy">
+                    <h3><a t-att-href="product_url" t-esc="product.name"/></h3>
+                    <p t-esc="product_card['summary']"/>
+                </div>
+                <div class="kv-price">
+                    <span t-field="product.list_price" t-options='{"widget": "monetary", "display_currency": kv_currency}'/>
+                </div>
+            </div>
+            <div class="kv-product-card__foot">
+                <span class="kv-product-tag" t-esc="product_category and product_category.name or 'Keur Venus'"/>
+                <form t-if="product_variant_id" action="/shop/cart/update" method="post" class="kv-mini-cart-form">
+                    <input type="hidden" name="csrf_token" t-att-value="request and request.csrf_token() or ''"/>
+                    <input type="hidden" name="product_template_id" t-att-value="product.id"/>
+                    <input type="hidden" name="product_id" t-att-value="product_variant_id"/>
+                    <input type="hidden" name="add_qty" value="1"/>
+                    <button type="submit" class="kv-mini-btn kv-mini-btn--add" aria-label="Ajouter au panier">
+                        <iconify-icon icon="solar:bag-4-linear"/>
+                    </button>
+                </form>
+                <a t-else="" t-att-href="product_url" class="kv-mini-btn" aria-label="Voir le produit">
+                    <iconify-icon icon="solar:arrow-right-linear"/>
+                </a>
+            </div>
+        </article>
+    </template>
+
+    <template id="theme_keurvenus_sidebar_product_card" name="Theme Keur Venus Sidebar Product Card">
+        <t t-set="product" t-value="product_card['product']"/>
+        <t t-set="product_variant_id" t-value="product_card['variant_id']"/>
+        <t t-set="product_url" t-value="product.website_url or '/shop'"/>
+        <t t-set="product_image" t-value="product_card['image_url'] or fallback_image"/>
+        <article class="kv-small-card">
+            <div class="kv-small-card__visual" t-attf-style="background-image:url('#{product_image}')">
+                <button t-if="product_variant_id" type="button" class="kv-wish-btn o_add_wishlist" t-att-data-product-template-id="product.id" t-att-data-product-product-id="product_variant_id" data-action="o_wishlist" aria-label="favori">
+                    <iconify-icon icon="solar:heart-linear"/>
+                </button>
+            </div>
+            <h4><a t-att-href="product_url" t-esc="product.name"/></h4>
+            <p><span t-field="product.list_price" t-options='{"widget": "monetary", "display_currency": kv_currency}'/></p>
+        </article>
+    </template>
+
+    <template id="s_keurvenus_hero" name="Hero Keur Venus">
+        <t t-set="kv_env" t-value="request and request.env or env"/>
+        <t t-set="kv_website_model" t-value="kv_env['website']"/>
+        <t t-set="kv_website_id" t-value="kv_env.context.get('website_id')"/>
+        <t t-set="kv_website" t-value="(request and request.env['website'].get_current_website()) or kv_website_model.get_current_website() or (kv_website_id and kv_website_model.browse(kv_website_id)) or kv_website_model.browse()"/>
+        <t t-set="kv_has_website" t-value="kv_website.exists()"/>
+        <t t-set="kv_currency" t-value="kv_has_website and kv_website.currency_id or kv_env.company.currency_id"/>
+        <t t-set="kv_categories" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_category_cards(limit=6) or []"/>
+        <t t-set="kv_products" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_cards(limit=4) or []"/>
+        <t t-set="kv_product_filters" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_filters(product_cards=kv_products, category_cards=kv_categories, limit=3) or []"/>
+            <section class="s_keurvenus_hero kv-home-section" data-snippet="theme_keurvenus.s_keurvenus_hero" data-name="Hero Keur Venus">
+                <article class="kv-hero">
+                    <div class="kv-hero__content">
+                        <div class="kv-eyebrow">
+                            <iconify-icon icon="solar:stars-minimalistic-linear"/>
+                            collection maison raffinee
+                        </div>
+                        <h1>L'elegance qui habille votre interieur.</h1>
+                        <p>
+                            Decouvrez une selection premium de vaisselle, decoration interieure,
+                            linge de maison et bien-etre pour creer un foyer chaleureux,
+                            apaise et sophistique.
+                        </p>
+                        <div class="kv-cta-row">
+                            <a href="/shop" class="kv-cta-primary">
+                                Decouvrir la collection
+                                <iconify-icon icon="solar:arrow-right-linear"/>
+                            </a>
+                            <a href="/shop" class="kv-cta-secondary">Explorer la boutique</a>
+                        </div>
+                    </div>
+                </article>
+
+                <div class="kv-promo-grid">
+                    <article class="kv-promo-card kv-promo-card--table">
+                        <div class="kv-promo-copy">
+                            <h3>Art de la table, version signature.</h3>
+                            <p>Services, tasses, bols et details precieux pour des moments qui marquent.</p>
+                            <a class="kv-cta-secondary" href="/shop">Voir la table</a>
+                        </div>
+                    </article>
+                    <article class="kv-promo-card kv-promo-card--textile">
+                        <div class="kv-promo-copy">
+                            <h3>Textures douces pour une maison apaisee.</h3>
+                            <p>Plaids, coussins, linge delicat et essentiels bien-etre pour chaque piece.</p>
+                            <a class="kv-cta-secondary" href="/shop">Voir l'univers</a>
+                        </div>
+                    </article>
+                </div>
+            </section>
+    </template>
+
+    <template id="s_keurvenus_collections" name="Univers Keur Venus">
+        <t t-set="kv_env" t-value="request and request.env or env"/>
+        <t t-set="kv_website_model" t-value="kv_env['website']"/>
+        <t t-set="kv_website_id" t-value="kv_env.context.get('website_id')"/>
+        <t t-set="kv_website" t-value="(request and request.env['website'].get_current_website()) or kv_website_model.get_current_website() or (kv_website_id and kv_website_model.browse(kv_website_id)) or kv_website_model.browse()"/>
+        <t t-set="kv_has_website" t-value="kv_website.exists()"/>
+        <t t-set="kv_currency" t-value="kv_has_website and kv_website.currency_id or kv_env.company.currency_id"/>
+        <t t-set="kv_categories" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_category_cards(limit=6) or []"/>
+        <t t-set="kv_products" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_cards(limit=4) or []"/>
+        <t t-set="kv_product_filters" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_filters(product_cards=kv_products, category_cards=kv_categories, limit=3) or []"/>
+            <section class="s_keurvenus_collections kv-home-section" data-snippet="theme_keurvenus.s_keurvenus_collections" data-name="Univers Keur Venus">
+                <section class="kv-section-card" id="collections">
+                    <div class="kv-section-heading">
+                        <div>
+                            <h2>Explorez par univers</h2>
+                            <p>Une navigation plus marchande et inspirante, pensee pour faire decouvrir les familles de produits comme dans un grand magasin digital.</p>
+                        </div>
+                        <div class="kv-section-actions">
+                            <div class="kv-chip-row">
+                                <a href="/shop" class="kv-chip active">Tous</a>
+                                <a
+                                    t-foreach="kv_categories[:3]"
+                                    t-as="category_filter"
+                                    t-att-href="'/shop/category/%s' % slug(category_filter['category'])"
+                                    class="kv-chip"
+                                >
+                                    <t t-esc="category_filter['category'].name"/>
+                                </a>
+                            </div>
+                            <div class="kv-carousel-nav">
+                                <button class="kv-carousel-btn" type="button" data-kv-scroll-target="kv-collections-carousel" data-kv-scroll-direction="-1" aria-label="Univers precedent">
+                                    <iconify-icon icon="solar:alt-arrow-left-linear"/>
+                                </button>
+                                <button class="kv-carousel-btn" type="button" data-kv-scroll-target="kv-collections-carousel" data-kv-scroll-direction="1" aria-label="Univers suivant">
+                                    <iconify-icon icon="solar:alt-arrow-right-linear"/>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kv-category-grid" id="kv-collections-carousel">
+                        <t t-if="kv_categories">
+                            <a
+                                t-foreach="kv_categories"
+                                t-as="category_card"
+                                t-att-href="'/shop/category/%s' % slug(category_card['category'])"
+                                t-attf-class="kv-category-card kv-category-card--#{category_card_index + 1}"
+                                t-attf-style="background-image:linear-gradient(180deg, rgba(245, 234, 220, .08), rgba(28, 20, 14, .56)), url('#{category_card['image_url']}')"
+                            >
+                                <span><t t-esc="category_card['count']"/> pieces</span>
+                                <div>
+                                    <small><t t-esc="category_card['eyebrow']"/></small>
+                                    <strong><t t-esc="category_card['category'].name"/></strong>
+                                </div>
+                            </a>
+                        </t>
+                        <t t-else="">
+                            <a href="/shop" class="kv-category-card kv-category-card--1"><span>24 pieces</span><div><small>Cafe &amp; table</small><strong>Vaisselle elegante</strong></div></a>
+                            <a href="/shop" class="kv-category-card kv-category-card--2"><span>18 pieces</span><div><small>Salon editorial</small><strong>Deco interieure</strong></div></a>
+                            <a href="/shop" class="kv-category-card kv-category-card--3"><span>14 pieces</span><div><small>Chambre &amp; douceur</small><strong>Linge de maison</strong></div></a>
+                            <a href="/shop" class="kv-category-card kv-category-card--4"><span>09 pieces</span><div><small>Rituels sensoriels</small><strong>Bien-etre &amp; senteurs</strong></div></a>
+                            <a href="/shop" class="kv-category-card kv-category-card--5"><span>11 pieces</span><div><small>Offrir avec style</small><strong>Edition cadeau</strong></div></a>
+                            <a href="/shop" class="kv-category-card kv-category-card--6"><span>16 pieces</span><div><small>Selection maison</small><strong>Objets signature</strong></div></a>
+                        </t>
+                    </div>
+                </section>
+            </section>
+    </template>
+
+    <template id="s_keurvenus_products" name="Produits Keur Venus">
+        <t t-set="kv_env" t-value="request and request.env or env"/>
+        <t t-set="kv_website_model" t-value="kv_env['website']"/>
+        <t t-set="kv_website_id" t-value="kv_env.context.get('website_id')"/>
+        <t t-set="kv_website" t-value="(request and request.env['website'].get_current_website()) or kv_website_model.get_current_website() or (kv_website_id and kv_website_model.browse(kv_website_id)) or kv_website_model.browse()"/>
+        <t t-set="kv_has_website" t-value="kv_website.exists()"/>
+        <t t-set="kv_currency" t-value="kv_has_website and kv_website.currency_id or kv_env.company.currency_id"/>
+        <t t-set="kv_categories" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_category_cards(limit=6) or []"/>
+        <t t-set="kv_products" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_cards(limit=4) or []"/>
+        <t t-set="kv_product_filters" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_filters(product_cards=kv_products, category_cards=kv_categories, limit=3) or []"/>
+            <section class="s_keurvenus_products kv-home-section" data-snippet="theme_keurvenus.s_keurvenus_products" data-name="Produits Keur Venus">
+                <section class="kv-section-card" id="bestsellers">
+                    <div class="kv-section-heading">
+                        <div>
+                            <h2>Produits populaires</h2>
+                            <p>Des pieces qui combinent utilite, matiere, style et presence visuelle dans la maison.</p>
+                        </div>
+                        <div class="kv-chip-row">
+                            <a href="/shop" class="kv-chip active">Best sellers</a>
+                            <a
+                                t-foreach="kv_product_filters"
+                                t-as="filter_category"
+                                t-att-href="'/shop/category/%s' % slug(filter_category)"
+                                class="kv-chip"
+                            >
+                                <t t-esc="filter_category.name"/>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="kv-products-grid">
+                        <t t-if="kv_products">
+                            <t t-foreach="kv_products" t-as="product_card">
+                                <t t-set="fallback_image" t-value="
+                                    product_card_index == 0 and '/theme_keurvenus/static/src/img/keurvenus/aurora-set.jpg' or
+                                    product_card_index == 1 and '/theme_keurvenus/static/src/img/keurvenus/linen-calm.jpg' or
+                                    product_card_index == 2 and '/theme_keurvenus/static/src/img/keurvenus/plate-showcase.jpg' or
+                                    '/theme_keurvenus/static/src/img/keurvenus/mugs-aura.jpg'
+                                "/>
+                                <t t-call="theme_keurvenus.theme_keurvenus_home_product_card"/>
+                            </t>
+                        </t>
+                        <t t-else="">
+                            <article class="kv-product-card kv-product-card--fallback">
+                                <div class="kv-product-card__visual" style="background-image:url('/theme_keurvenus/static/src/img/keurvenus/aurora-set.jpg')"/>
+                                <div class="kv-product-card__meta"><div class="kv-product-card__copy"><h3><a href="/shop">Service Aurora</a></h3><p>Assiettes &amp; bols en ceramique sable</p></div><div class="kv-price">69 000 FCFA</div></div>
+                                <div class="kv-product-card__foot"><span class="kv-product-tag">Table signature</span><a href="/shop" class="kv-mini-btn"><iconify-icon icon="solar:bag-4-linear"/></a></div>
+                            </article>
+                            <article class="kv-product-card kv-product-card--fallback">
+                                <div class="kv-product-card__visual" style="background-image:url('/theme_keurvenus/static/src/img/keurvenus/linen-calm.jpg')"/>
+                                <div class="kv-product-card__meta"><div class="kv-product-card__copy"><h3><a href="/shop">Collection Linen Calm</a></h3><p>Serviettes premium &amp; texture naturelle</p></div><div class="kv-price">32 000 FCFA</div></div>
+                                <div class="kv-product-card__foot"><span class="kv-product-tag">Maison douce</span><a href="/shop" class="kv-mini-btn"><iconify-icon icon="solar:bag-4-linear"/></a></div>
+                            </article>
+                            <article class="kv-product-card kv-product-card--fallback">
+                                <div class="kv-product-card__visual" style="background-image:url('/theme_keurvenus/static/src/img/keurvenus/plate-showcase.jpg')"/>
+                                <div class="kv-product-card__meta"><div class="kv-product-card__copy"><h3><a href="/shop">Vase Terre Lumiere</a></h3><p>Objet decoratif aux lignes sculpturales</p></div><div class="kv-price">24 500 FCFA</div></div>
+                                <div class="kv-product-card__foot"><span class="kv-product-tag">Deco editoriale</span><a href="/shop" class="kv-mini-btn"><iconify-icon icon="solar:bag-4-linear"/></a></div>
+                            </article>
+                            <article class="kv-product-card kv-product-card--fallback">
+                                <div class="kv-product-card__visual" style="background-image:url('/theme_keurvenus/static/src/img/keurvenus/mugs-aura.jpg')"/>
+                                <div class="kv-product-card__meta"><div class="kv-product-card__copy"><h3><a href="/shop">Mugs Aura Beige</a></h3><p>Duo de mugs finition mate pour une table douce</p></div><div class="kv-price">13 500 FCFA</div></div>
+                                <div class="kv-product-card__foot"><span class="kv-product-tag">Table du quotidien</span><a href="/shop" class="kv-mini-btn"><iconify-icon icon="solar:bag-4-linear"/></a></div>
+                            </article>
+                        </t>
+                    </div>
+                </section>
+            </section>
+    </template>
+
+    <template id="s_keurvenus_feature_banner" name="Banniere Keur Venus">
+        <section class="s_keurvenus_feature_banner kv-home-section" data-snippet="theme_keurvenus.s_keurvenus_feature_banner" data-name="Banniere Keur Venus">
+            <section class="kv-feature-banner">
+                <div class="kv-feature-banner__copy">
+                    <div class="kv-copy-panel">
+                        <div class="kv-eyebrow">edition maison</div>
+                        <h3>Offrez a votre interieur une presence calme et precieuse.</h3>
+                        <p>Pieces choisies pour celles et ceux qui aiment recevoir, creer une atmosphere et faire de la maison un espace de beaute quotidienne.</p>
+                        <div class="kv-cta-row">
+                            <a href="/shop" class="kv-cta-primary">Voir l'edition</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="kv-feature-banner__visual"/>
+            </section>
+        </section>
+    </template>
+
+    <template id="s_keurvenus_story_grid" name="Editorial Keur Venus">
+        <section class="s_keurvenus_story_grid kv-home-section" data-snippet="theme_keurvenus.s_keurvenus_story_grid" data-name="Editorial Keur Venus">
+            <section class="kv-story-grid">
+                <article class="kv-story-card kv-story-card--primary">
+                    <div class="kv-story-copy">
+                        <div class="kv-eyebrow">inspiration</div>
+                        <h3>Des matieres, des gestes, une maison qui respire.</h3>
+                        <p>Ker Venus cree un univers ou la table, le textile et la decoration deviennent une experience d'elegance douce.</p>
+                    </div>
+                </article>
+                <article class="kv-story-card kv-story-card--secondary">
+                    <div class="kv-story-copy">
+                        <div class="kv-eyebrow">bien-etre</div>
+                        <h3>Ralentir. Recevoir. Ressentir.</h3>
+                        <p>Des objets qui installent une ambiance, pas seulement un decor.</p>
+                    </div>
+                </article>
+            </section>
+        </section>
+    </template>
+
+    <template id="s_keurvenus_sidebar_stack" name="Sidebar Keur Venus">
+        <section class="s_keurvenus_sidebar_stack kv-home-section" data-snippet="theme_keurvenus.s_keurvenus_sidebar_stack" data-name="Sidebar Keur Venus">
+            <t t-call="theme_keurvenus.s_keurvenus_selection_panel"/>
+            <t t-call="theme_keurvenus.s_keurvenus_mini_banner"/>
+            <t t-call="theme_keurvenus.s_keurvenus_testimonial"/>
+            <t t-call="theme_keurvenus.s_keurvenus_newsletter"/>
+        </section>
+    </template>
+
+    <template id="s_keurvenus_selection_panel" name="Selection Keur Venus">
+        <t t-set="kv_env" t-value="request and request.env or env"/>
+        <t t-set="kv_website_model" t-value="kv_env['website']"/>
+        <t t-set="kv_website_id" t-value="kv_env.context.get('website_id')"/>
+        <t t-set="kv_website" t-value="(request and request.env['website'].get_current_website()) or kv_website_model.get_current_website() or (kv_website_id and kv_website_model.browse(kv_website_id)) or kv_website_model.browse()"/>
+        <t t-set="kv_has_website" t-value="kv_website.exists()"/>
+        <t t-set="kv_currency" t-value="kv_has_website and kv_website.currency_id or kv_env.company.currency_id"/>
+        <t t-set="kv_categories" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_category_cards(limit=6) or []"/>
+        <t t-set="kv_products" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_cards(limit=4) or []"/>
+        <t t-set="kv_product_filters" t-value="kv_has_website and kv_website._theme_keurvenus_get_homepage_product_filters(product_cards=kv_products, category_cards=kv_categories, limit=3) or []"/>
+        <section class="s_keurvenus_selection_panel kv-home-section kv-panel kv-selection-panel" data-snippet="theme_keurvenus.s_keurvenus_selection_panel" data-name="Selection Keur Venus">
+            <div class="kv-stack-title">
+                <h3>Selection du moment</h3>
+                <small>Premium picks</small>
+            </div>
+            <div class="kv-small-products">
+                <t t-if="kv_products">
+                    <t t-foreach="kv_products[4:8] or kv_products[:4]" t-as="product_card">
+                        <t t-set="fallback_image" t-value="
+                            product_card_index == 0 and '/theme_keurvenus/static/src/img/keurvenus/mugs-aura.jpg' or
+                            product_card_index == 1 and '/theme_keurvenus/static/src/img/keurvenus/soft-gold.jpg' or
+                            product_card_index == 2 and '/theme_keurvenus/static/src/img/keurvenus/bedroom-linen.jpg' or
+                            '/theme_keurvenus/static/src/img/keurvenus/coffee-table.jpg'
+                        "/>
+                        <t t-call="theme_keurvenus.theme_keurvenus_sidebar_product_card"/>
+                    </t>
+                </t>
+                <t t-else="">
+                    <article class="kv-small-card"><div class="kv-small-card__visual" style="background-image:url('/theme_keurvenus/static/src/img/keurvenus/mugs-aura.jpg')"/><h4><a href="/shop">Mugs Aura Beige</a></h4><p>13 500 FCFA</p></article>
+                    <article class="kv-small-card"><div class="kv-small-card__visual" style="background-image:url('/theme_keurvenus/static/src/img/keurvenus/soft-gold.jpg')"/><h4><a href="/shop">Bougie Soft Gold</a></h4><p>16 000 FCFA</p></article>
+                    <article class="kv-small-card"><div class="kv-small-card__visual" style="background-image:url('/theme_keurvenus/static/src/img/keurvenus/bedroom-linen.jpg')"/><h4><a href="/shop">Coussin Sable</a></h4><p>18 500 FCFA</p></article>
+                    <article class="kv-small-card"><div class="kv-small-card__visual" style="background-image:url('/theme_keurvenus/static/src/img/keurvenus/coffee-table.jpg')"/><h4><a href="/shop">Plateau Arches</a></h4><p>21 000 FCFA</p></article>
+                </t>
+            </div>
+        </section>
+    </template>
+
+    <template id="s_keurvenus_mini_banner" name="Offre Maison Keur Venus">
+        <section class="s_keurvenus_mini_banner kv-home-section kv-panel kv-mini-banner" data-snippet="theme_keurvenus.s_keurvenus_mini_banner" data-name="Offre Maison Keur Venus">
+            <div class="kv-eyebrow">offre maison</div>
+            <h3>Sets de table &amp; linge raffine</h3>
+            <p>Composez une ambiance chaleureuse avec des matieres naturelles et des tons apaisants.</p>
+            <div class="kv-mini-banner__visual">
+                <div class="kv-mini-banner__label">seller pick maison</div>
+            </div>
+            <div class="kv-mini-banner__points">
+                <span>Fibres naturelles</span>
+                <span>Textures premium</span>
+                <span>Ambiance apaisee</span>
+            </div>
+            <a class="kv-cta-secondary" href="/shop">Decouvrir</a>
+        </section>
+    </template>
+
+    <template id="s_keurvenus_testimonial" name="Temoignage Keur Venus">
+        <section class="s_keurvenus_testimonial kv-home-section kv-panel kv-testimonial-panel" data-snippet="theme_keurvenus.s_keurvenus_testimonial" data-name="Temoignage Keur Venus">
+            <h3>Une marque pensee pour les interieurs qui ont du gout.</h3>
+            <div class="kv-testimonial-grid">
+                <div class="kv-avatar kv-avatar--1"/>
+                <div class="kv-avatar kv-avatar--2"/>
+                <div class="kv-avatar kv-avatar--3"/>
+            </div>
+            <p class="kv-quote">"Les collections Ker Venus ont cette qualite rare : elles ne remplissent pas l'espace, elles le revelent. Chaque detail semble choisi pour apporter calme, chaleur et elegance a la maison."</p>
+        </section>
+    </template>
+
+    <template id="s_keurvenus_newsletter" name="Newsletter Keur Venus">
+        <section class="s_keurvenus_newsletter kv-home-section kv-panel kv-newsletter" data-snippet="theme_keurvenus.s_keurvenus_newsletter" data-name="Newsletter Keur Venus">
+            <div class="kv-eyebrow">newsletter premium</div>
+            <h3>Recevez nos nouveautes et nos inspirations maison.</h3>
+            <p>Inscrivez-vous pour decouvrir les nouvelles collections, les idees deco et les selections exclusives Ker Venus.</p>
+            <form class="kv-newsletter-form" onsubmit="return false;">
+                <input type="email" placeholder="Votre adresse e-mail"/>
+                <button type="submit">S'inscrire</button>
+            </form>
+        </section>
+    </template>
+</odoo>

@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="theme_keurvenus_product_detail" inherit_id="website_sale.product" name="Theme Keur Venus Product Detail">
+        <xpath expr="//section[@id='product_detail']" position="replace">
+            <section
+                id="product_detail"
+                t-attf-class="kv-product-page oe_website_sale #{'discount' if combination_info['has_discounted_price'] else ''} o_wsale_product_page_opt_image_width_{{website.product_page_image_width}} o_wsale_product_page_opt_image_ratio_{{website.product_page_image_ratio}} o_wsale_product_page_opt_image_ratio_mobile_{{website.product_page_image_ratio_mobile}} o_wsale_product_page_opt_image_radius_{{website.product_page_image_roundness}}"
+                t-att-data-view-track="view_track and '1' or '0'"
+                t-att-data-product-tracking-info="'product_tracking_info' in combination_info and json.dumps(combination_info['product_tracking_info'])"
+            >
+                <t t-set="product_variant" t-value="product.env['product.product'].browse(combination_info['product_id'])"/>
+                <t t-set="single_value_attributes" t-value="product.valid_product_template_attribute_line_ids._prepare_single_value_for_display()"/>
+                <t t-set="product_documents" t-value="product.sudo().product_document_ids.filtered(lambda doc: doc.shown_on_product_page)"/>
+                <t t-set="show_reviews_tab" t-value="is_view_active('website_sale.product_comment')"/>
+                <t t-set="has_desc_tab" t-value="product.description_sale"/>
+                <t t-set="has_spec_tab" t-value="single_value_attributes or product.default_code or (product_variant and product_variant.default_code) or product.uom_id or product.categ_id or product.public_categ_ids"/>
+                <t t-set="related_products" t-value="request.env['product.template'].sudo().search(website.sale_product_domain() + [('id', '!=', product.id)], limit=4, order='website_sequence asc, id desc')"/>
+
+                <div class="kv-breadcrumbs">
+                    <a href="/">Accueil</a>
+                    <iconify-icon icon="solar:alt-arrow-right-linear"/>
+                    <a t-att-href="keep(shop_path)">Boutique</a>
+                    <t t-if="category">
+                        <iconify-icon icon="solar:alt-arrow-right-linear"/>
+                        <a t-att-href="keep('%s/category/%s' % (shop_path, slug(category)))" t-field="category.name"/>
+                    </t>
+                    <iconify-icon icon="solar:alt-arrow-right-linear"/>
+                    <span t-field="product.name"/>
+                </div>
+
+                <div
+                    id="product_detail_main"
+                    class="kv-product-layout"
+                    data-name="Product Page"
+                    t-att-data-image_layout="website.product_page_image_layout"
+                    t-att-data-image_width="website.product_page_image_width"
+                >
+                    <div class="kv-gallery-panel kv-panel o_wsale_product_images" t-att-data-image-amount="len(product_variant._get_images() if product_variant else product._get_images())">
+                        <div class="kv-gallery-main">
+                            <t t-call="website_sale.shop_product_images"/>
+                        </div>
+                    </div>
+
+                    <div id="product_details" class="kv-info-panel kv-panel">
+                        <div class="kv-info-head">
+                            <div class="kv-eyebrow">
+                                <iconify-icon icon="solar:stars-minimalistic-linear"/>
+                                edition maison
+                            </div>
+                            <h1 t-field="product.name"/>
+                            <p class="kv-subtitle" t-if="product.description_sale"><span t-field="product.description_sale"/></p>
+                        </div>
+
+                        <div class="kv-meta-row">
+                            <div class="kv-rating">
+                                <iconify-icon icon="solar:star-bold"/>
+                                <span>4.9 · <t t-esc="product.rating_count or 0"/> avis · Disponible</span>
+                            </div>
+                            <div class="kv-price-block">
+                                <div class="kv-price"><t t-call="website_sale.product_price"/></div>
+                                <span class="kv-price-note" t-if="single_value_attributes"><t t-esc="list(single_value_attributes.values())[0]['values_name']"/></span>
+                            </div>
+                        </div>
+
+                        <form t-if="product._is_add_to_cart_possible()" action="/shop/cart/update" method="post" class="js_product js_main_product kv-purchase-box">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <input type="hidden" class="product_id" name="product_id" t-att-value="product_variant.id"/>
+                            <input type="hidden" class="product_template_id" name="product_template_id" t-att-value="product.id"/>
+                            <input type="hidden" name="product_type" t-att-value="product.type"/>
+
+                            <div t-attf-class="kv-option-group #{not product.valid_product_template_attribute_line_ids and 'd-none' or ''}">
+                                <div class="kv-option-label">Options</div>
+                                <div class="kv-option-row">
+                                    <t t-call="website_sale.variants">
+                                        <t t-set="ul_class" t-valuef="flex-column"/>
+                                        <t t-set="parent_combination" t-value="None"/>
+                                        <t t-set="combination" t-value="combination_info['combination']"/>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <p class="css_not_available_msg alert alert-warning">Cette combinaison n'existe pas.</p>
+
+                            <div class="availability_messages o_not_editable"/>
+
+                            <div
+                                id="o_wsale_cta_wrapper"
+                                class="kv-product-actions d-flex flex-wrap align-items-center gap-2 w-100"
+                            >
+                                <div class="kv-qty-box">
+                                    <div
+                                        t-attf-class="css_quantity input-group {{'d-none' if combination_info['prevent_zero_price_sale'] else 'd-inline-flex'}} align-middle border"
+                                        contenteditable="false"
+                                    >
+                                        <a
+                                            href="#"
+                                            class="css_quantity_minus btn btn-link js_add_cart_json border-0"
+                                            aria-label="Retirer une unite"
+                                            title="Retirer une unite"
+                                            name="remove_one"
+                                        >
+                                            <i class="oi oi-minus text-600"/>
+                                        </a>
+                                        <input
+                                            type="text"
+                                            class="form-control quantity text-center border-0"
+                                            data-min="1"
+                                            name="add_qty"
+                                            t-att-value="1"
+                                        />
+                                        <a
+                                            href="#"
+                                            class="css_quantity_plus btn btn-link js_add_cart_json border-0"
+                                            aria-label="Ajouter une unite"
+                                            title="Ajouter une unite"
+                                        >
+                                            <i class="oi oi-plus text-600"/>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div
+                                    id="add_to_cart_wrap"
+                                    t-attf-class="{{'d-none' if combination_info['prevent_zero_price_sale'] else 'd-flex'}} kv-cta-row flex-grow-1 flex-wrap align-items-center gap-2 w-100"
+                                >
+                                    <a
+                                        id="add_to_cart"
+                                        role="button"
+                                        href="#"
+                                        class="kv-cta-primary kv-product-cta-primary btn btn-primary js_check_product a-submit flex-grow-1"
+                                        t-att-data-show-quantity="is_view_active('website_sale.product_quantity')"
+                                        data-animation-selector=".o_wsale_product_images"
+                                    >
+                                        Ajouter au panier
+                                        <iconify-icon icon="solar:bag-4-linear"/>
+                                    </a>
+                                    <a
+                                        role="button"
+                                        href="#"
+                                        class="kv-cta-secondary kv-product-cta-secondary o_we_buy_now"
+                                    >
+                                        Acheter maintenant
+                                    </a>
+                                </div>
+
+                                <div id="product_option_block" class="kv-product-option-block"/>
+                            </div>
+
+                            <div class="kv-terms">
+                                <t t-call="website_sale.product_terms_and_conditions"/>
+                            </div>
+                        </form>
+                        <p t-elif="not product.active" class="alert alert-warning">Ce produit n'est plus disponible.</p>
+                        <p t-else="" class="alert alert-warning">Aucune combinaison valide n'est actuellement disponible.</p>
+
+                        <div class="kv-service-list">
+                            <div class="kv-service-item">
+                                <iconify-icon icon="solar:box-linear"/>
+                                <div><strong>Livraison premium</strong><span>Livraison rapide a Dakar et options de retrait selon disponibilite.</span></div>
+                            </div>
+                            <div class="kv-service-item">
+                                <iconify-icon icon="solar:shield-check-linear"/>
+                                <div><strong>Paiement securise</strong><span>Commande securisee et accompagnement client pour chaque achat.</span></div>
+                            </div>
+                            <div class="kv-service-item">
+                                <iconify-icon icon="solar:star-shine-linear"/>
+                                <div><strong>Selection Ker Venus</strong><span>Piece choisie pour sa matiere, sa presence visuelle et sa longevite.</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="kv-tabs-panel kv-panel" t-if="has_spec_tab or has_desc_tab or show_reviews_tab or product_documents">
+                    <div class="kv-tab-head nav" role="tablist">
+                        <a t-if="has_desc_tab" class="kv-chip active" href="#kv-tab-description" data-bs-toggle="tab" role="tab">Description</a>
+                        <a t-if="has_spec_tab" t-attf-class="kv-chip #{'' if has_desc_tab else 'active'}" href="#kv-tab-details" data-bs-toggle="tab" role="tab">Details</a>
+                        <a t-if="show_reviews_tab" class="kv-chip" href="#kv-tab-reviews" data-bs-toggle="tab" role="tab">Avis</a>
+                        <a t-if="product_documents" class="kv-chip" href="#kv-tab-documents" data-bs-toggle="tab" role="tab">Documents</a>
+                    </div>
+
+                    <div class="tab-content kv-tab-content">
+                        <div t-if="has_desc_tab" class="tab-pane fade active show" id="kv-tab-description" role="tabpanel">
+                            <div t-field="product.description_sale"/>
+                        </div>
+
+                        <div t-if="has_spec_tab" t-attf-class="tab-pane fade #{'' if has_desc_tab else 'active show'}" id="kv-tab-details" role="tabpanel">
+                            <div class="kv-spec-list">
+                                <div class="kv-spec-row" t-if="product.default_code or (product_variant and product_variant.default_code)"><span>Reference</span><span><t t-esc="(product_variant and product_variant.default_code) or product.default_code"/></span></div>
+                                <div class="kv-spec-row" t-if="product.categ_id"><span>Categorie</span><span t-esc="product.categ_id.name"/></div>
+                                <div class="kv-spec-row" t-if="product.uom_id"><span>Unite</span><span t-esc="product.uom_id.name"/></div>
+                                <div class="kv-spec-row" t-foreach="single_value_attributes.values()" t-as="attribute_line"><span t-esc="attribute_line['attribute_name']"/><span t-esc="attribute_line['values_name']"/></div>
+                            </div>
+                        </div>
+
+                        <div t-if="show_reviews_tab" class="tab-pane fade" id="kv-tab-reviews" role="tabpanel">
+                            <t t-call="website_sale.product_comment"/>
+                        </div>
+
+                        <div t-if="product_documents" class="tab-pane fade" id="kv-tab-documents" role="tabpanel">
+                            <ul class="kv-doc-list">
+                                <li t-foreach="product_documents" t-as="document">
+                                    <a t-att-href="document.website_url" t-esc="document.name"/>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="kv-split-section">
+                    <article class="kv-story-card kv-panel">
+                        <div class="kv-eyebrow">art de vivre</div>
+                        <h3>Une table qui installe une ambiance, pas seulement un decor.</h3>
+                        <p>Chez Ker Venus, chaque objet doit pouvoir transformer le quotidien: creer une atmosphere, accompagner les gestes et laisser une impression durable de douceur et de raffinement.</p>
+                    </article>
+
+                    <article class="kv-spec-card kv-panel">
+                        <h3>Caracteristiques</h3>
+                        <div class="kv-spec-list">
+                            <div class="kv-spec-row"><span>Matiere</span><span><t t-esc="single_value_attributes and list(single_value_attributes.values())[0]['values_name'] or 'Selection premium'"/></span></div>
+                            <div class="kv-spec-row"><span>Reference</span><span><t t-esc="(product_variant and product_variant.default_code) or product.default_code or 'N/A'"/></span></div>
+                            <div class="kv-spec-row"><span>Usage</span><span>Maison du quotidien &amp; reception</span></div>
+                            <div class="kv-spec-row"><span>Style</span><span>Contemporain chaleureux</span></div>
+                            <div class="kv-spec-row"><span>Disponibilite</span><span><t t-esc="combination_info.get('free_qty', 1) and 'En stock' or 'Sur commande'"/></span></div>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="kv-related-panel kv-panel" t-if="related_products">
+                    <div class="kv-section-heading">
+                        <div>
+                            <h2>Vous aimerez aussi</h2>
+                            <p>Des pieces complementaires dans le meme esprit: douceur des matieres, presence elegante et univers maison coherent.</p>
+                        </div>
+                    </div>
+                    <div class="kv-related-grid">
+                        <article class="kv-related-card" t-foreach="related_products" t-as="related_product">
+                            <t t-set="related_product_variant_id" t-value="related_product._get_first_possible_variant_id()"/>
+                            <div class="kv-related-card__visual" t-attf-style="background-image:url('#{related_product.image_1920 and ('/web/image/product.template/%s/image_1024' % related_product.id) or '/theme_keurvenus/static/src/img/keurvenus/coffee-table.jpg'}')">
+                                <button
+                                    t-if="related_product_variant_id"
+                                    type="button"
+                                    class="kv-wish-btn o_add_wishlist"
+                                    t-att-data-product-template-id="related_product.id"
+                                    t-att-data-product-product-id="related_product_variant_id"
+                                    data-action="o_wishlist"
+                                    aria-label="Ajouter aux favoris"
+                                    title="Ajouter aux favoris"
+                                >
+                                    <iconify-icon icon="solar:heart-linear"/>
+                                </button>
+                                <a class="stretched-link" t-att-href="related_product.website_url or '/shop'" t-att-title="related_product.name"/>
+                            </div>
+                            <div>
+                                <h4><a t-att-href="related_product.website_url or '/shop'" t-esc="related_product.name"/></h4>
+                                <p t-esc="related_product.description_sale and related_product.description_sale[:80] or 'Piece complementaire pour la maison'"/>
+                            </div>
+                            <div class="kv-related-price">
+                                <span t-field="related_product.list_price" t-options='{"widget": "monetary", "display_currency": website.currency_id}'/>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+            </section>
+        </xpath>
+    </template>
+</odoo>

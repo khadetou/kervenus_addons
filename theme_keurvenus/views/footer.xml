@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="theme_keurvenus_footer" inherit_id="website.layout" name="Theme Keur Venus Footer">
+        <xpath expr="//div[@id='footer']" position="replace">
+            <t t-set="footer_categories" t-value="request.env['product.public.category'].sudo().search([('has_published_products', '=', True)], order='sequence asc, id asc', limit=8)"/>
+            <div id="footer" class="oe_structure oe_structure_solo text-break" t-ignore="true" t-if="not no_footer">
+                <footer class="kv-footer">
+                    <div class="kv-footer__brand">
+                        <img src="/theme_keurvenus/static/src/img/keurvenus/logo.svg" alt="Keur Venus" class="kv-footer__logo"/>
+                        <p>
+                            Vaisselle, decoration interieure, linge de maison et bien-etre.
+                            Une signature maison pensee pour sublimer le quotidien avec douceur et elegance.
+                        </p>
+                    </div>
+
+                    <div class="kv-footer__col">
+                        <h4>Boutique</h4>
+                        <ul>
+                            <li t-foreach="footer_categories[:4]" t-as="category">
+                                <a t-att-href="'/shop/category/%s' % slug(category)" t-esc="category.name"/>
+                            </li>
+                            <li t-if="not footer_categories"><a href="/shop">Catalogue</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="kv-footer__col">
+                        <h4>Navigation</h4>
+                        <ul>
+                            <li><a href="/shop">Boutique</a></li>
+                            <li><a t-att-href="user_id._is_public() and '/web/login?redirect=/my/home' or '/my/home'">Mon compte</a></li>
+                            <li><a href="/shop/wishlist">Favoris</a></li>
+                            <li><a href="/contactus">Contact</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="kv-footer__col">
+                        <h4>Contact</h4>
+                        <ul>
+                            <li><t t-esc="res_company.city or 'Dakar'"/>, <t t-esc="res_company.country_id.name or 'Senegal'"/></li>
+                            <li><t t-esc="res_company.phone or '+221 76 300 99 12'"/></li>
+                            <li><t t-esc="res_company.email or 'contact@kervenus.com'"/></li>
+                            <li>@kervenus</li>
+                        </ul>
+                    </div>
+                </footer>
+            </div>
+        </xpath>
+    </template>
+</odoo>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_customer_supplier_role" model="ir.ui.view">
+        <field name="name">res.partner.form.customer.supplier.role</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_type']" position="after">
+                <field
+                    name="partner_role"
+                    widget="radio"
+                    options="{'horizontal': true}"
+                    invisible="type != 'contact'"
+                />
+            </xpath>
+            <xpath expr="//page[@name='contact_addresses']//field[@name='child_ids']/form/sheet/group[@name='other_info']" position="before">
+                <group invisible="type != 'contact'">
+                    <field name="partner_role" widget="radio" options="{'horizontal': true}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_partner_simple_form_customer_supplier_role" model="ir.ui.view">
+        <field name="name">res.partner.simple.form.customer.supplier.role</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_simple_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_type']" position="after">
+                <field
+                    name="partner_role"
+                    widget="radio"
+                    options="{'horizontal': true}"
+                    invisible="type != 'contact'"
+                />
+            </xpath>
+        </field>
+    </record>
+
+    <menuitem
+        id="menu_contacts_customers"
+        name="Clients"
+        parent="contacts.menu_contacts"
+        action="account.res_partner_action_customer"
+        sequence="3"
+    />
+
+    <menuitem
+        id="menu_contacts_suppliers"
+        name="Fournisseurs"
+        parent="contacts.menu_contacts"
+        action="account.res_partner_action_supplier"
+        sequence="4"
+    />
+</odoo>

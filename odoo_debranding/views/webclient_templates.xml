@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Override webclient_bootstrap to use custom favicon and title for the backend.
+        This template calls web.layout and passes variables for title and favicon.
+    -->
+    <template id="webclient_bootstrap_debranding" inherit_id="web.webclient_bootstrap"
+        name="Debranding Webclient Bootstrap">
+
+        <!-- Set custom title from session_info (passed by ir.http) -->
+        <xpath expr="//t[@t-call='web.layout']" position="attributes">
+            <attribute name="t-call">web.layout</attribute>
+        </xpath>
+
+        <!-- Override the title variable before calling web.layout -->
+        <xpath expr="//t[@t-call='web.layout']" position="before">
+            <t t-set="title" t-value="session_info.get('backend_title') or 'Odoo'" />
+            <t t-set="x_icon"
+                t-value="'/odoo_debranding/favicon' if request.env['ir.config_parameter'].sudo().get_param('odoo_debranding.backend_favicon') else '/web/static/img/favicon.ico'" />
+        </xpath>
+
+    </template>
+
+</odoo>

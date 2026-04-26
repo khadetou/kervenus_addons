@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Extend product template form to use HTML editor for description_sale field -->
+    <record id="product_template_form_view_enhanced_description" model="ir.ui.view">
+        <field name="name">product.template.form.view.enhanced.description</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <!-- Replace the description_sale field to use html widget -->
+            <xpath expr="//field[@name='description_sale']" position="replace">
+                <field 
+                    colspan="2" 
+                    name="description_sale" 
+                    widget="html"
+                    nolabel="1" 
+                    placeholder="This note is added to sales orders and invoices. Use the toolbar to format text with bullet points, bold, italics, etc."/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
+

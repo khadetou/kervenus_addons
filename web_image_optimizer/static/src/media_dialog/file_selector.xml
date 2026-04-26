@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="html_editor.FileSelectorControlPanel" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('col-auto') and hasclass('btn-group')]" position="before">
+            <div class="col-auto btn-group" t-if="props.optimizeSelected">
+                <button
+                    type="button"
+                    class="btn btn-secondary o_optimize_media_button"
+                    t-att-disabled="!props.hasOptimizableSelection"
+                    t-on-click="props.optimizeSelected">
+                    Optimize
+                </button>
+            </div>
+        </xpath>
+    </t>
+
+    <t t-inherit="html_editor.FileSelector" t-inherit-mode="extension">
+        <xpath expr="//FileSelectorControlPanel" position="attributes">
+            <attribute name="optimizeSelected">this.optimizeSelectedAttachments ? (() => this.optimizeSelectedAttachments()) : undefined</attribute>
+            <attribute name="hasOptimizableSelection">this.hasOptimizableSelection || false</attribute>
+        </xpath>
+    </t>
+</templates>

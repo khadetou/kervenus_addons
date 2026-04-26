@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="theme_keurvenus_primary_variables_scss" model="theme.ir.asset">
+        <field name="key">theme_keurvenus.primary_variables_scss</field>
+        <field name="name">Theme Keur Venus Primary Variables SCSS</field>
+        <field name="bundle">web._assets_primary_variables</field>
+        <field name="path">theme_keurvenus/static/src/scss/primary_variables.scss</field>
+    </record>
+
+</odoo>

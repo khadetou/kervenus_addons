@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_web_image_optimizer" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.web.image.optimizer</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Website" name="web_image_optimizer" groups="base.group_system">
+                    <block title="Image Optimization">
+                        <setting string="Enable image optimizer" help="Automatically optimize uploaded raster images without visible quality loss when possible.">
+                            <field name="web_image_optimizer_enabled"/>
+                        </setting>
+                        <setting string="Default trigger mode" help="Choose whether optimization runs automatically on upload or only when manually requested.">
+                            <field name="web_image_optimizer_default_trigger_mode"/>
+                        </setting>
+                        <setting string="Default profile" help="Current optimizer profile used by media dialog and image fields.">
+                            <field name="web_image_optimizer_default_profile"/>
+                        </setting>
+                        <setting string="Soft target size (KB)" help="Preferred target size. Images keep their quality even if they remain above this value.">
+                            <field name="web_image_optimizer_soft_target_kb"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

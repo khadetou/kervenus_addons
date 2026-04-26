@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="theme_keurvenus_checkout_layout" inherit_id="website_sale.checkout_layout" name="Theme Keur Venus Checkout Layout">
+        <xpath expr="//div[hasclass('oe_website_sale', 'o_website_sale_checkout_container')]" position="attributes">
+            <attribute name="class" add="kv-checkout-layout" separator=" "/>
+        </xpath>
+        <xpath expr="//div[contains(@t-attf-class, 'oe_clear_stucture oe_cart col-12')]" position="attributes">
+            <attribute name="t-attf-class">oe_clear_stucture oe_cart col-12 #{'kv-cart-host' if current_website_checkout_step_href == '/shop/cart' else ''} #{'col-lg-7' if website_sale_order and website_sale_order.website_order_line and current_website_checkout_step_href != '/shop/cart' else ''}</attribute>
+        </xpath>
+        <xpath expr="//div[@t-if='show_shorter_cart_summary']" position="attributes">
+            <attribute name="t-if">show_shorter_cart_summary and current_website_checkout_step_href != '/shop/cart'</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('d-none', 'd-lg-block', 'offset-xxl-1', 'col-12', 'col-lg-5', 'col-xxl-4', 'rounded')]" position="attributes">
+            <attribute name="t-attf-class">#{'d-none' if current_website_checkout_step_href == '/shop/cart' else 'd-none d-lg-block'} offset-xxl-1 col-12 col-lg-5 col-xxl-4 rounded</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_total_card')]" position="attributes">
+            <attribute name="class" add="kv-order-summary" separator=" "/>
+        </xpath>
+    </template>
+
+    <template id="theme_keurvenus_shorter_cart_summary" inherit_id="website_sale.shorter_cart_summary" name="Theme Keur Venus Shorter Cart Summary">
+        <xpath expr="//div[hasclass('o_total_card')]/div" position="before">
+            <div class="kv-summary-head">
+                <h5>Resume</h5>
+                <span>Total, livraison et passage en caisse securises.</span>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="theme_keurvenus_cart_page" inherit_id="website_sale.cart" name="Theme Keur Venus Cart Page">
+        <xpath expr="//div[@id='shop_cart']" position="replace">
+            <div id="shop_cart" class="col kv-cart-page">
+                <div class="d-none" aria-hidden="true">
+                    <t t-call="website_sale.quick_reorder_button"/>
+                </div>
+                <div t-if="abandoned_proceed or access_token" class="alert alert-info mt8 mb8" role="alert">
+                    <t t-if="abandoned_proceed">
+                        <p>Votre precedent panier a deja ete valide.</p>
+                        <p t-if="website_sale_order">Poursuivez avec votre panier actuel.</p>
+                    </t>
+                    <t t-if="access_token">
+                        <p>Voici votre panier courant.</p>
+                        <p>
+                            <strong><a t-attf-href="/shop/cart/?id=#{id}&amp;access_token=#{access_token}&amp;revive_method=squash">Cliquez ici</a></strong>
+                            pour restaurer votre panier precedent.
+                        </p>
+                        <p>
+                            <strong><a t-attf-href="/shop/cart/?id=#{id}&amp;access_token=#{access_token}&amp;revive_method=merge">Cliquez ici</a></strong>
+                            pour fusionner votre ancien panier avec l'actuel.
+                        </p>
+                    </t>
+                </div>
+
+                <t t-call="website_sale.cart_lines"/>
+                <div class="oe_structure" id="oe_structure_website_sale_cart_1"/>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="theme_keurvenus_cart_lines" inherit_id="website_sale.cart_lines" name="Theme Keur Venus Cart Lines">
+        <xpath expr="." position="replace">
+            <t>
+                <t t-if="not website_sale_order or not website_sale_order.website_order_line">
+                    <div class="js_cart_lines kv-empty-state kv-panel">
+                        <div class="mb-3"><t t-call="website_sale.empty_cart_svg"/></div>
+                        <h5>Votre panier est vide</h5>
+                        <p>Ajoutez quelques produits pour preparer votre prochaine commande.</p>
+                        <p class="mt-20"><a href="/shop" class="kv-cta-primary">Decouvrir la boutique</a></p>
+                    </div>
+                </t>
+
+                <t t-if="website_sale_order">
+                    <div t-if="website_sale_order._get_shop_warning(clear=False)" class="alert alert-warning js_cart_lines" role="alert">
+                        <strong>Attention :</strong>
+                        <div t-out="website_sale_order._get_shop_warning()" class="text-prewrap"/>
+                    </div>
+                </t>
+
+                <div id="cart_products" t-if="website_sale_order and website_sale_order.website_order_line" class="js_cart_lines kv-cart-layout">
+                    <div class="kv-cart-main">
+                        <section class="kv-cart-panel kv-panel">
+                            <div class="kv-section-head">
+                                <div>
+                                    <h1>Votre panier</h1>
+                                    <p>Une selection prete a transformer votre interieur avec douceur, raffinement et presence visuelle.</p>
+                                </div>
+                                <a href="/shop" class="kv-helper-link">Continuer mes achats <iconify-icon icon="solar:arrow-right-linear"/></a>
+                            </div>
+
+                            <div class="kv-cart-items">
+                                <t t-foreach="website_sale_order.website_order_line" t-as="line">
+                                    <t t-set="is_combo" t-value="line.product_type == 'combo'"/>
+                                    <t t-set="combination_name" t-value="line._get_combination_name()"/>
+                                    <div class="kv-cart-item o_cart_product" t-attf-data-product-id="#{line.product_id and line.product_id.id}">
+                                        <div class="kv-cart-item__visual">
+                                            <t t-call="website_sale.cart_line_product_link">
+                                                <img
+                                                    t-if="not line._is_sellable() and line.product_id.image_128"
+                                                    t-att-src="image_data_uri(line.product_id.image_128)"
+                                                    class="img"
+                                                    t-att-alt="line.name_short"
+                                                />
+                                                <div
+                                                    t-else=""
+                                                    t-field="line.product_id.image_128"
+                                                    t-options="{'widget': 'image', 'qweb_img_responsive': False}"
+                                                />
+                                            </t>
+                                        </div>
+                                        <div class="kv-cart-item__copy">
+                                            <t t-call="website_sale.cart_line_product_link">
+                                                <h3 t-out="line._get_line_header()"/>
+                                            </t>
+                                            <div t-if="combination_name or line.product_template_id._has_multiple_uoms()" class="kv-item-meta">
+                                                <span t-if="combination_name" class="kv-meta-pill" t-out="combination_name"/>
+                                                <span t-if="line.product_template_id._has_multiple_uoms()" class="kv-meta-pill" t-out="line.product_uom_id.name"/>
+                                            </div>
+                                            <t t-call="website_sale.cart_line_description_following_lines"/>
+                                            <ul t-if="is_combo" class="list-group kv-combo-list">
+                                                <t
+                                                    t-foreach="line.linked_line_ids.filtered('combo_item_id')"
+                                                    t-as="combo_item_line"
+                                                >
+                                                    <t t-call="website_sale.cart_combo_item_line"/>
+                                                </t>
+                                            </ul>
+                                        </div>
+                                        <div class="kv-cart-item__actions">
+                                            <div class="kv-line-price">
+                                                <t t-call="website_sale.cart_lines_price"/>
+                                            </div>
+                                            <div class="kv-qty-box">
+                                                <t t-call="website_sale.cart_lines_quantity"/>
+                                            </div>
+                                            <button class="js_delete_product kv-remove-btn" aria-label="Retirer du panier" title="Retirer du panier" type="button">
+                                                <iconify-icon icon="solar:trash-bin-trash-linear"/>
+                                                Supprimer
+                                            </button>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+
+                            <div class="kv-promo-box">
+                                <t t-call="website_sale.coupon_form"/>
+                            </div>
+                        </section>
+
+                        <section class="kv-suggest-panel kv-panel">
+                            <div class="kv-section-heading">
+                                <div>
+                                    <h2>Vous aimerez aussi</h2>
+                                    <p>Des pieces complementaires pour prolonger l'experience Ker Venus dans toute la maison.</p>
+                                </div>
+                            </div>
+                            <div class="kv-suggest-grid">
+                                <t t-foreach="request.env['product.template'].sudo().search(website.sale_product_domain(), limit=4, order='website_sequence asc, id desc')" t-as="suggested_product">
+                                    <article class="kv-suggest-card">
+                                        <a class="kv-suggest-card__visual" t-att-href="suggested_product.website_url or '/shop'" t-attf-style="background-image:url('#{suggested_product.image_1920 and ('/web/image/product.template/%s/image_1024' % suggested_product.id) or '/theme_keurvenus/static/src/img/keurvenus/coffee-table.jpg'}')">
+                                            <button class="kv-wish-btn kv-icon-btn" type="button" aria-label="Ajouter aux favoris">
+                                                <iconify-icon icon="solar:heart-linear"/>
+                                            </button>
+                                        </a>
+                                        <div>
+                                            <h3><a t-att-href="suggested_product.website_url or '/shop'" t-esc="suggested_product.name"/></h3>
+                                            <p t-esc="suggested_product.description_sale and suggested_product.description_sale[:60] or 'Selection maison'"/>
+                                        </div>
+                                        <div class="kv-suggest-price">
+                                            <span t-field="suggested_product.list_price" t-options='{"widget": "monetary", "display_currency": website.currency_id}'/>
+                                        </div>
+                                        <form action="/shop/cart/update" method="post" class="kv-mini-cart-form kv-suggest-add-form">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <input type="hidden" name="product_template_id" t-att-value="suggested_product.id"/>
+                                            <input type="hidden" name="product_id" t-att-value="suggested_product.product_variant_id.id"/>
+                                            <input type="hidden" name="add_qty" value="1"/>
+                                            <button type="submit" class="kv-mini-btn kv-mini-btn--add kv-suggest-add">Ajouter</button>
+                                        </form>
+                                    </article>
+                                </t>
+                            </div>
+                        </section>
+                    </div>
+
+                    <t t-set="discount_amount" t-value="(website_sale_order.amount_undiscounted - website_sale_order.amount_untaxed) if website_sale_order.amount_undiscounted &gt; website_sale_order.amount_untaxed else 0"/>
+                    <t t-set="tax_totals" t-value="website_sale_order.tax_totals or {}"/>
+                    <t t-set="tax_subtotals" t-value="tax_totals.get('subtotals', [])"/>
+                    <t t-set="has_named_tax_groups" t-value="False"/>
+                    <aside class="kv-summary-stack">
+                        <section class="kv-summary-panel kv-panel">
+                            <h2>Resume</h2>
+                            <div class="kv-summary-list">
+                                <div class="kv-summary-row">
+                                    <span>Sous-total</span>
+                                    <strong t-field="website_sale_order.amount_untaxed" t-options='{"widget": "monetary", "display_currency": website_sale_order.currency_id}'/>
+                                </div>
+                                <div class="kv-summary-row" t-if="website_sale_order._has_deliverable_products()">
+                                    <span>Livraison</span>
+                                    <strong>
+                                        <span
+                                            t-if="not website_sale_order.carrier_id"
+                                            name="o_message_no_dm_set"
+                                        >-</span>
+                                        <span
+                                            t-else=""
+                                            t-field="website_sale_order.amount_delivery"
+                                            t-options='{"widget": "monetary", "display_currency": website_sale_order.currency_id}'
+                                        />
+                                    </strong>
+                                </div>
+                                <t t-foreach="tax_subtotals" t-as="subtotal">
+                                    <t t-foreach="subtotal.get('tax_groups', [])" t-as="tax_group">
+                                        <t t-if="tax_group.get('tax_amount_currency')">
+                                            <t t-set="has_named_tax_groups" t-value="True"/>
+                                            <div class="kv-summary-row">
+                                                <span t-out="tax_group.get('group_name') or 'Taxes'"/>
+                                                <strong
+                                                    t-out="tax_group['tax_amount_currency']"
+                                                    t-options='{"widget": "monetary", "display_currency": website_sale_order.currency_id}'
+                                                />
+                                            </div>
+                                        </t>
+                                    </t>
+                                </t>
+                                <div class="kv-summary-row" t-if="website_sale_order.amount_tax and not has_named_tax_groups">
+                                    <span>Taxes</span>
+                                    <strong t-field="website_sale_order.amount_tax" t-options='{"widget": "monetary", "display_currency": website_sale_order.currency_id}'/>
+                                </div>
+                                <div class="kv-summary-row" t-if="discount_amount">
+                                    <span>Reduction</span>
+                                    <strong>- <span t-out="discount_amount" t-options='{"widget": "monetary", "display_currency": website_sale_order.currency_id}'/></strong>
+                                </div>
+                            </div>
+                            <div class="kv-summary-total">
+                                <strong>Total a payer</strong>
+                                <span t-field="website_sale_order.amount_total" t-options='{"widget": "monetary", "display_currency": website_sale_order.currency_id}'/>
+                            </div>
+                            <a
+                                role="button"
+                                name="website_sale_main_button"
+                                t-attf-class="kv-cta-primary kv-summary-cta #{not website_sale_order._is_cart_ready() and 'disabled'}"
+                                t-att-href="next_website_checkout_step_href"
+                            >
+                                Passer au paiement
+                                <iconify-icon icon="solar:arrow-right-linear"/>
+                            </a>
+                            <a href="/shop" class="kv-cta-secondary kv-summary-cta-secondary">Poursuivre les achats</a>
+                            <div
+                                t-if="(website.account_on_checkout != 'mandatory' or not website.is_public_user()) and show_shorter_cart_summary"
+                                class="kv-express-checkout"
+                            >
+                                <t t-call="payment.express_checkout"/>
+                            </div>
+                            <p class="kv-summary-note">Paiement securise, accompagnement client et livraison premium a Dakar selon disponibilite.</p>
+                        </section>
+
+                        <section class="kv-assurance-panel kv-panel">
+                            <h2>Pourquoi acheter chez nous</h2>
+                            <div class="kv-assurance-list">
+                                <div class="kv-assurance-item">
+                                    <iconify-icon icon="solar:box-linear"/>
+                                    <div>
+                                        <strong>Livraison premium</strong>
+                                        <span>Nous prenons soin de la presentation et de la protection de chaque commande.</span>
+                                    </div>
+                                </div>
+                                <div class="kv-assurance-item">
+                                    <iconify-icon icon="solar:shield-check-linear"/>
+                                    <div>
+                                        <strong>Paiement securise</strong>
+                                        <span>Commande securisee et accompagnement simple pour finaliser votre achat.</span>
+                                    </div>
+                                </div>
+                                <div class="kv-assurance-item">
+                                    <iconify-icon icon="solar:stars-minimalistic-linear"/>
+                                    <div>
+                                        <strong>Signature Ker Venus</strong>
+                                        <span>Des pieces choisies pour leur matiere, leur durabilite et leur elegance dans la maison.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </aside>
+                </div>
+            </t>
+        </xpath>
+    </template>
+</odoo>

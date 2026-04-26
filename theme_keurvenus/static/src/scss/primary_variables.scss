@@ -1,0 +1,54 @@
+$o-theme-font-configs: map-merge(
+    $o-theme-font-configs,
+    (
+        'Inter': (
+            'family': ('Inter', system-ui, sans-serif),
+            'url': 'Inter:300,400,500,600,700,800',
+        ),
+        'Cormorant Garamond': (
+            'family': ('Cormorant Garamond', serif),
+            'url': 'Cormorant+Garamond:400,500,600,700',
+        ),
+    )
+);
+
+$o-color-palettes: map-merge(
+    $o-color-palettes,
+    (
+        'keurvenus_premium': (
+            'o-color-1': #c9a46a,
+            'o-color-2': #efe6dc,
+            'o-color-3': #fbf8f4,
+            'o-color-4': #ffffff,
+            'o-color-5': #201b18,
+            'menu': 3,
+            'footer': 3,
+            'copyright': 5,
+        ),
+    )
+);
+
+$o-selected-color-palettes-names: append($o-selected-color-palettes-names, 'keurvenus_premium');
+
+$o-website-values-palettes: (
+    (
+        'color-palettes-name': 'keurvenus_premium',
+        'font': 'Inter',
+        'headings-font': 'Cormorant Garamond',
+        'navbar-font': 'Inter',
+        'buttons-font': 'Inter',
+        'btn-padding-y': .7rem,
+        'btn-padding-x': 1.2rem,
+        'btn-padding-y-sm': .45rem,
+        'btn-padding-x-sm': .9rem,
+        'btn-padding-y-lg': .85rem,
+        'btn-padding-x-lg': 1.5rem,
+        'btn-border-radius': 10rem,
+        'btn-border-radius-sm': 10rem,
+        'btn-border-radius-lg': 10rem,
+        'input-border-radius': 10rem,
+        'input-border-radius-sm': 10rem,
+        'input-border-radius-lg': 10rem,
+        'link-underline': 'never',
+    ),
+);

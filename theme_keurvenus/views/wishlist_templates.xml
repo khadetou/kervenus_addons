@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="theme_keurvenus_product_wishlist" inherit_id="website_sale_wishlist.product_wishlist" name="Theme Keur Venus Wishlist Page">
+        <xpath expr="//section[hasclass('wishlist-section')]" position="replace">
+            <section class="wishlist-section kv-wishlist-page">
+                <t t-set="recent_products" t-value="request.env['product.template'].sudo().search(website.sale_product_domain(), limit=3, order='website_sequence asc, id desc')"/>
+                <t t-if="False">
+                    <t t-call="website_sale.products_item"/>
+                    <button id="add_to_cart_button" type="button"/>
+                </t>
+                <div class="kv-breadcrumbs">
+                    <a href="/">Accueil</a>
+                    <iconify-icon icon="solar:alt-arrow-right-linear"/>
+                    <a href="/web/login?redirect=/my/home">Mon compte</a>
+                    <iconify-icon icon="solar:alt-arrow-right-linear"/>
+                    <span>Wishlist</span>
+                </div>
+
+                <section class="kv-wishlist-hero">
+                    <article class="kv-panel kv-wishlist-hero__copy">
+                        <div class="kv-eyebrow">
+                            <iconify-icon icon="solar:heart-linear"/>
+                            wishlist maison
+                        </div>
+                        <h1>Vos coups de coeur Ker Venus, reunis au meme endroit.</h1>
+                        <p>Gardez de cote les pieces qui vous inspirent le plus : vaisselle, linge de maison, objets decoratifs et essentiels bien-etre pour construire un univers coherent, doux et elegant.</p>
+                    </article>
+                    <article class="kv-panel kv-wishlist-hero__side">
+                        <h3>Une selection prete a devenir votre prochaine ambiance maison.</h3>
+                        <div class="kv-mini"><iconify-icon icon="solar:stars-minimalistic-linear"/> Enregistrez, comparez, puis ajoutez au panier au bon moment.</div>
+                    </article>
+                </section>
+
+                <section class="kv-panel kv-wishlist-panel">
+                    <div class="kv-section-heading">
+                        <div>
+                            <h2>Ma wishlist</h2>
+                            <p>Retrouvez vos favoris, comparez-les et ajoutez-les au panier quand vous etes pret.</p>
+                        </div>
+                        <div class="kv-chip-row">
+                            <button class="kv-chip active" type="button">Tous</button>
+                            <button class="kv-chip" type="button">Vaisselle</button>
+                            <button class="kv-chip" type="button">Deco</button>
+                            <button class="kv-chip" type="button">Bien-etre</button>
+                        </div>
+                    </div>
+
+                    <div id="empty-wishlist-message" t-attf-class="kv-empty-state #{'d-none' if wishes else ''}">
+                        <div class="mb-3"><t t-call="website_sale_wishlist.empty_wishlist_svg"/></div>
+                        <h5>Votre liste de souhaits est vide</h5>
+                        <p>Enregistrez vos produits favoris pour les retrouver plus tard.</p>
+                        <p class="mt-20"><a href="/shop" class="kv-cta-primary">Explorer la boutique</a></p>
+                    </div>
+
+                    <div
+                        id="o_comparelist_table"
+                        t-att-data-wishlist-grid-columns="website.wishlist_grid_columns"
+                        t-att-data-wishlist-mobile-columns="website.wishlist_mobile_columns"
+                        t-attf-style="--o-wsale-wishlist-grid-gap: {{website.wishlist_gap}};"
+                        t-attf-class="kv-wishlist-grid #{'d-none' if not wishes else ''}"
+                    >
+                        <t t-foreach="wishes" t-as="wish">
+                            <t t-set="combination_info" t-value="wish.product_id._get_combination_info_variant()"/>
+                            <t t-set="is_sold_out" t-value="not wish.product_id.allow_out_of_stock_order and wish.product_id._is_sold_out()"/>
+                            <article class="kv-wish-card o_wishlist_item" t-att-data-wish-id="wish.id" t-att-data-product-id="wish.product_id.id">
+                                <div class="kv-wish-card__visual" t-attf-style="background-image:url('/web/image/product.product/#{wish.product_id.id}/image_512')">
+                                    <button type="button" class="kv-wish-btn active o_wish_rm" aria-label="Retirer">
+                                        <iconify-icon icon="solar:heart-bold"/>
+                                    </button>
+                                    <span class="kv-shop-product-card__badge" t-if="wish.product_id.public_categ_ids[:1]"><t t-esc="wish.product_id.public_categ_ids[:1].name"/></span>
+                                    <span
+                                        t-if="is_sold_out"
+                                        class="o_wsale_stock_badge badge text-bg-danger align-self-start align-top"
+                                    >
+                                        <i class="fa fa-circle text-danger me-1" aria-hidden="true"/>
+                                        Rupture de stock
+                                    </span>
+                                </div>
+                                <div class="kv-wish-copy">
+                                    <h3><a t-att-href="wish.product_id.website_url" t-esc="wish.product_id.display_name"/></h3>
+                                    <p t-if="wish.product_id.description_sale"><span t-field="wish.product_id.description_sale"/></p>
+                                    <p t-else="">Piece enregistree pour votre prochaine ambiance maison.</p>
+                                </div>
+                                <div class="kv-wish-foot">
+                                    <span class="kv-price">
+                                        <span
+                                            t-if="not combination_info['prevent_zero_price_sale']"
+                                            t-out="combination_info['price']"
+                                            t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"
+                                        />
+                                        <span t-else="" t-field="website.prevent_zero_price_sale_text"/>
+                                    </span>
+                                    <button
+                                        t-if="not combination_info['prevent_zero_price_sale']"
+                                        id="kv_add_to_cart_button"
+                                        type="button"
+                                        class="o_wish_add kv-cta-primary"
+                                        t-att-disabled="is_sold_out"
+                                        t-att-data-show-quantity="is_view_active('website_sale.product_quantity')"
+                                        t-att-data-product-template-id="wish.product_id.product_tmpl_id.id"
+                                        t-att-data-product-product-id="wish.product_id.id"
+                                        t-att-data-product-type="wish.product_id.product_tmpl_id.type"
+                                        t-att-data-ptav-ids="json.dumps(wish.product_id.product_template_attribute_value_ids.ids)"
+                                    >
+                                        Ajouter au panier
+                                    </button>
+                                    <a
+                                        t-else=""
+                                        t-att-href="website.contact_us_button_url + '?subject=' + combination_info['display_name']"
+                                        class="kv-cta-primary"
+                                    >
+                                        Nous contacter
+                                    </a>
+                                </div>
+                            </article>
+                        </t>
+                    </div>
+                </section>
+
+                <section class="kv-below-grid">
+                    <article class="kv-panel kv-empty-panel">
+                        <div class="kv-empty-icon"><iconify-icon icon="solar:heart-linear"/></div>
+                        <h2>Un etat vide deja pret</h2>
+                        <p>Cette zone sert si la wishlist ne contient encore aucun produit. Elle permet d'afficher un message propre, premium et coherent avec le reste du site.</p>
+                        <a href="/shop" class="kv-cta-secondary">Explorer la boutique</a>
+                    </article>
+
+                    <article class="kv-panel kv-recent-panel">
+                        <h2>Recemment consultes</h2>
+                        <div class="kv-recent-list">
+                            <article class="kv-recent-item" t-foreach="recent_products" t-as="recent_product">
+                                <a class="kv-recent-visual" t-att-href="recent_product.website_url or '/shop'" t-attf-style="background-image:url('#{recent_product.image_1920 and ('/web/image/product.template/%s/image_512' % recent_product.id) or '/theme_keurvenus/static/src/img/keurvenus/wishlist-recent.jpg'}')"/>
+                                <div class="kv-recent-copy">
+                                    <h3><a t-att-href="recent_product.website_url or '/shop'" t-esc="recent_product.name"/></h3>
+                                    <p t-esc="recent_product.description_sale and recent_product.description_sale[:65] or 'Selection maison'"/>
+                                </div>
+                                <div class="kv-recent-price">
+                                    <span t-field="recent_product.list_price" t-options='{"widget": "monetary", "display_currency": website.currency_id}'/>
+                                </div>
+                            </article>
+                        </div>
+                    </article>
+                </section>
+            </section>
+        </xpath>
+    </template>
+</odoo>

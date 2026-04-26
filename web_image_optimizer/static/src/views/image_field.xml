@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="web.ImageField" t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('o_clear_file_button')]" position="before">
+            <button
+                t-if="props.record.data[props.name] and state.isValid and !state.isOptimizing"
+                class="o_optimize_file_button btn btn-light border-0 rounded-circle m-1 p-1"
+                data-tooltip="Optimize"
+                aria-label="Optimize"
+                t-on-click.prevent.stop="onOptimizeImage">
+                <i class="fa fa-compress fa-fw"/>
+            </button>
+        </xpath>
+    </t>
+
+    <t t-inherit="html_editor.ImageField" t-inherit-mode="extension">
+        <xpath expr="//button[hasclass('o_clear_file_button')]" position="before">
+            <button
+                t-if="props.record.data[props.name] and state.isValid and !state.isOptimizing"
+                class="o_optimize_file_button btn btn-light border-0 rounded-circle m-1 p-1"
+                data-tooltip="Optimize"
+                aria-label="Optimize"
+                t-on-click.prevent.stop="onOptimizeImage">
+                <i class="fa fa-compress fa-fw"/>
+            </button>
+        </xpath>
+    </t>
+</templates>

@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="theme_keurvenus_mobile_menu_branch" name="Theme Keur Venus Mobile Menu Branch">
+        <t t-set="children" t-value="submenu.child_id.filtered(lambda item: item.is_visible)"/>
+        <div t-if="submenu.is_visible" class="kv-mobile-branch">
+            <a
+                t-att-href="submenu._clean_url()"
+                t-attf-class="kv-mobile-link #{submenu._is_active() and 'active' or ''}"
+                t-att-target="'_blank' if submenu.new_window else None"
+            >
+                <span t-field="submenu.name"/>
+            </a>
+            <div t-if="children" class="kv-mobile-submenu">
+                <a
+                    t-foreach="children[:5]"
+                    t-as="submenu"
+                    t-att-href="submenu._clean_url()"
+                    t-attf-class="kv-mobile-sublink #{submenu._is_active() and 'active' or ''}"
+                    t-att-target="'_blank' if submenu.new_window else None"
+                >
+                    <span t-field="submenu.name"/>
+                </a>
+            </div>
+        </div>
+    </template>
+
+    <template id="theme_keurvenus_product_category_extra_link" inherit_id="website_sale.product_category_extra_link" name="Theme Keur Venus Product Category Extra Link">
+        <xpath expr="//button[1]" position="replace"/>
+        <xpath expr="//t[@t-foreach='categories']" position="replace">
+            <t t-foreach="categories[:1]" t-as="category">
+                <span class="kv-search-result-category" t-out="category.name"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="theme_keurvenus_search_result_item" inherit_id="website.one_hybrid" name="Theme Keur Venus Search Result Item">
+        <xpath expr="//div[hasclass('o_search_result_item')]" position="replace">
+            <t t-set="description" t-value="result.get('description')"/>
+            <t t-set="extra_link" t-value="result.get('extra_link_url') and result.get('extra_link')"/>
+            <t t-set="extra_link_html" t-value="not result.get('extra_link_url') and result.get('extra_link')"/>
+            <div class="o_search_result_item kv-search-result-card">
+                <img t-if="result.get('image_url')" t-att-src="result.get('image_url')" role="presentation" alt="" class="flex-shrink-0 o_image_64_contain"/>
+                <i t-else="" t-att-class="'o_image_64_contain text-center pt16 fa %s' % result.get('_fa')" style="font-size: 34px;"/>
+                <div class="o_search_result_item_detail kv-search-result-card__body px-3">
+                    <div t-att-class="'h6 fw-bold %s' % ('' if description else 'mb-0')" t-out="result['name']"/>
+                    <p t-if="description" class="mb-0" t-out="description"/>
+                </div>
+                <div
+                    t-if="extra_link or extra_link_html or result.get('detail') or result.get('detail_strike') or result.get('detail_extra')"
+                    class="flex-shrink-0 ms-auto kv-search-result-card__meta"
+                >
+                    <div class="kv-search-result-card__category">
+                        <button
+                            t-if="extra_link"
+                            class="extra_link btn btn-link btn-sm p-0"
+                            t-out="extra_link"
+                            t-attf-onclick="location.href='#{result.get('extra_link_url')}';return false;"
+                        />
+                        <t t-if="extra_link_html" t-out="extra_link_html"/>
+                    </div>
+                    <div class="kv-search-result-card__price">
+                        <t t-if="result.get('detail_strike')">
+                            <span class="text-muted text-nowrap" style="text-decoration: line-through;">
+                                <t t-out="result.get('detail_strike')"/>
+                            </span>
+                        </t>
+                        <b t-if="result.get('detail')" class="text-nowrap">
+                            <t t-out="result.get('detail')"/>
+                        </b>
+                        <t t-if="result.get('detail_extra')">
+                            <span class="text-nowrap" t-out="result.get('detail_extra')"/>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="theme_keurvenus_header" inherit_id="website.layout" name="Theme Keur Venus Header">
+        <xpath expr="//header" position="replace">
+            <t t-set="public_categ_model" t-value="request.env['product.public.category'].sudo()"/>
+            <t t-set="top_categories" t-value="public_categ_model.search([('has_published_products', '=', True)], order='sequence asc, id asc', limit=8)"/>
+            <t t-set="primary_categories" t-value="top_categories[:4]"/>
+            <t t-set="secondary_categories" t-value="top_categories[4:8] or top_categories[:4]"/>
+            <div t-if="not no_header" class="kv-header-shell" data-name="Header">
+                <div class="kv-topbar">
+                    <div class="kv-topbar__inline">
+                        <span>Livraison premium a Dakar</span>
+                        <span>Art de la table • Deco interieure • Linge de maison • Bien-etre</span>
+                    </div>
+                    <div class="kv-topbar__inline">
+                        <span>WhatsApp: <t t-esc="res_company.phone or '+221 76 300 99 12'"/></span>
+                        <span>Paiement securise</span>
+                    </div>
+                </div>
+
+                <header class="kv-header">
+                    <a href="/" class="kv-brand" aria-label="Keur Venus">
+                        <img src="/theme_keurvenus/static/src/img/keurvenus/logo.svg" alt="Keur Venus" class="kv-brand__logo"/>
+                    </a>
+
+                    <div class="kv-nav-center">
+                        <div class="dropdown kv-nav-dropdown">
+                            <button class="kv-nav-pill dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span>Categories</span>
+                                <iconify-icon icon="solar:alt-arrow-down-linear"/>
+                            </button>
+                            <div class="dropdown-menu kv-dropdown-menu">
+                                <a t-foreach="primary_categories or []" t-as="category" t-att-href="'/shop/category/%s' % slug(category)" t-esc="category.name"/>
+                                <a t-if="not primary_categories" href="/shop">Explorer la boutique</a>
+                            </div>
+                        </div>
+
+                        <div class="dropdown kv-nav-dropdown">
+                            <button class="kv-nav-pill dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span>Collections</span>
+                                <iconify-icon icon="solar:alt-arrow-down-linear"/>
+                            </button>
+                            <div class="dropdown-menu kv-dropdown-menu">
+                                <a t-foreach="secondary_categories or []" t-as="category" t-att-href="'/shop/category/%s' % slug(category)" t-esc="category.name"/>
+                                <a t-if="not secondary_categories" href="/shop?order=create_date desc">Nouveautes</a>
+                            </div>
+                        </div>
+
+                        <div class="kv-search">
+                            <button
+                                type="button"
+                                class="kv-search-trigger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#kv_search_modal"
+                                aria-label="Ouvrir la recherche"
+                            >
+                                <span class="kv-search-trigger__icon">
+                                    <iconify-icon icon="solar:magnifer-linear"/>
+                                </span>
+                                <span class="kv-search-trigger__text">Rechercher une assiette, un plaid, une bougie...</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="kv-header-actions">
+                        <button class="kv-icon-btn kv-mobile-toggle" type="button" data-kv-drawer-open="1" aria-controls="kv_mobile_drawer" aria-label="Ouvrir le menu">
+                            <iconify-icon icon="solar:hamburger-menu-linear"/>
+                        </button>
+
+                        <ul class="kv-header-icons">
+                            <li t-if="user_id._is_public()" class="kv-header-icon-item">
+                                <a href="/web/login?redirect=/my/home" class="kv-icon-btn" aria-label="Connexion">
+                                    <iconify-icon icon="solar:user-rounded-linear"/>
+                                </a>
+                            </li>
+
+                            <t t-else="" t-call="portal.user_dropdown">
+                                <t t-set="_avatar" t-value="True"/>
+                                <t t-set="_icon" t-value="False"/>
+                                <t t-set="_user_name" t-value="False"/>
+                                <t t-set="_no_caret" t-value="True"/>
+                                <t t-set="_item_class" t-value="'kv-header-icon-item dropdown'"/>
+                                <t t-set="_link_class" t-value="'kv-icon-btn kv-icon-btn--account'"/>
+                                <t t-set="_avatar_class" t-value="'kv-account-avatar'"/>
+                                <t t-set="_dropdown_menu_class" t-value="'dropdown-menu-end kv-dropdown-menu kv-account-dropdown'"/>
+                            </t>
+
+                            <t t-call="website_sale_wishlist.header_wishlist_link">
+                                <t t-set="_icon" t-value="True"/>
+                                <t t-set="_text" t-value="False"/>
+                                <t t-set="_item_class" t-value="'kv-header-icon-item'"/>
+                                <t t-set="_link_class" t-value="'kv-icon-btn kv-icon-btn--wishlist'"/>
+                                <t t-set="_icon_wrap_class" t-value="'kv-icon-btn__wrap'"/>
+                                <t t-set="_badge_class" t-value="'kv-icon-btn__badge'"/>
+                            </t>
+
+                            <t t-call="website_sale.header_cart_link">
+                                <t t-set="_icon" t-value="True"/>
+                                <t t-set="_text" t-value="False"/>
+                                <t t-set="_item_class" t-value="'kv-header-icon-item'"/>
+                                <t t-set="_link_class" t-value="'kv-icon-btn kv-icon-btn--cart'"/>
+                                <t t-set="_icon_wrap_class" t-value="'kv-icon-btn__wrap'"/>
+                                <t t-set="_badge_class" t-value="'kv-icon-btn__badge'"/>
+                            </t>
+                        </ul>
+                    </div>
+                </header>
+
+                <div class="kv-mobile-header-search">
+                    <button
+                        type="button"
+                        class="kv-search-trigger kv-mobile-header-search__trigger"
+                        data-bs-toggle="modal"
+                        data-bs-target="#kv_search_modal"
+                        aria-label="Ouvrir la recherche"
+                    >
+                        <span class="kv-search-trigger__icon">
+                            <iconify-icon icon="solar:magnifer-linear"/>
+                        </span>
+                        <span class="kv-search-trigger__text">Rechercher dans la boutique...</span>
+                    </button>
+                </div>
+
+                <div id="kv_search_modal" class="modal fade css_editable_mode_hidden kv-search-modal" aria-hidden="true" tabindex="-1">
+                    <div class="modal-dialog kv-search-modal__dialog">
+                        <div class="modal-content kv-search-modal__content">
+                            <div class="kv-search-modal__head">
+                                <div class="kv-search-modal__formwrap">
+                                    <t t-call="website.website_search_box_input">
+                                        <t t-set="_form_classes" t-valuef="kv-search-modal-form"/>
+                                        <t t-set="_input_classes" t-valuef="kv-search-modal-input"/>
+                                        <t t-set="_submit_classes" t-valuef="kv-search-modal-btn"/>
+                                        <t t-set="_classes" t-valuef=""/>
+                                        <t t-set="search_type" t-valuef="products"/>
+                                        <t t-set="action" t-valuef="/shop"/>
+                                        <t t-set="limit" t-valuef="8"/>
+                                        <t t-set="display_image" t-valuef="true"/>
+                                        <t t-set="display_description" t-valuef="true"/>
+                                        <t t-set="display_extra_link" t-valuef="true"/>
+                                        <t t-set="display_detail" t-valuef="true"/>
+                                        <t t-set="order_by" t-valuef="website_sequence asc,name asc"/>
+                                        <t t-set="placeholder">Rechercher une assiette, un plaid, une bougie...</t>
+                                    </t>
+                                </div>
+                                <button type="button" class="kv-search-modal__close" data-bs-dismiss="modal" aria-label="Fermer la recherche">
+                                    <iconify-icon icon="solar:close-linear"/>
+                                    <span>Fermer</span>
+                                </button>
+                            </div>
+
+                            <div class="kv-search-modal__chips">
+                                <a t-foreach="top_categories[:5]" t-as="search_category" t-att-href="'/shop/category/%s' % slug(search_category)" class="kv-search-chip">
+                                    <t t-esc="search_category.name"/>
+                                </a>
+                                <a t-if="not top_categories" href="/shop?search=table" class="kv-search-chip">Art de la table</a>
+                                <a t-if="not top_categories" href="/shop?search=linge" class="kv-search-chip">Linge de maison</a>
+                                <a t-if="not top_categories" href="/shop?search=bougie" class="kv-search-chip">Bougies</a>
+                            </div>
+
+                            <div class="kv-search-modal__meta">
+                                <div class="kv-search-modal__copy">
+                                    Recherche produit Keur Venus, appuyee sur l'autocomplete natif Odoo 19.
+                                </div>
+                                <div class="kv-search-modal__hint">
+                                    Commencez a taper pour afficher les suggestions et ouvrir les vraies fiches produit.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="kv_mobile_drawer" class="kv-mobile-drawer" aria-hidden="true">
+                    <button type="button" class="kv-mobile-drawer__backdrop" data-kv-drawer-close="1" aria-label="Fermer le menu"/>
+                    <aside class="kv-mobile-drawer__panel" role="dialog" aria-modal="true" aria-label="Navigation mobile">
+                        <div class="kv-mobile-drawer__head">
+                            <a href="/" class="kv-brand" aria-label="Keur Venus">
+                                <img src="/theme_keurvenus/static/src/img/keurvenus/logo.svg" alt="Keur Venus" class="kv-brand__logo"/>
+                            </a>
+                            <button type="button" class="kv-icon-btn" data-kv-drawer-close="1" aria-label="Fermer le menu">
+                                <iconify-icon icon="solar:close-linear"/>
+                            </button>
+                        </div>
+
+                        <div class="kv-mobile-search">
+                            <t t-call="website.website_search_box_input">
+                                <t t-set="_form_classes" t-valuef="kv-search__form"/>
+                                <t t-set="_input_classes" t-valuef="kv-search__input"/>
+                                <t t-set="_submit_classes" t-valuef="kv-search__submit"/>
+                                <t t-set="_classes" t-valuef=""/>
+                                <t t-set="search_type" t-valuef="products"/>
+                                <t t-set="action" t-valuef="/shop"/>
+                                <t t-set="limit" t-valuef="8"/>
+                                <t t-set="display_image" t-valuef="true"/>
+                                <t t-set="display_description" t-valuef="true"/>
+                                <t t-set="display_extra_link" t-valuef="true"/>
+                                <t t-set="display_detail" t-valuef="true"/>
+                                <t t-set="order_by" t-valuef="website_sequence asc,name asc"/>
+                                <t t-set="placeholder">Rechercher dans la boutique...</t>
+                            </t>
+                        </div>
+
+                        <div class="kv-mobile-links">
+                            <t t-foreach="website.menu_id.child_id.filtered(lambda item: item.is_visible)[:6]" t-as="submenu">
+                                <t t-call="theme_keurvenus.theme_keurvenus_mobile_menu_branch"/>
+                            </t>
+                            <a t-if="not website.menu_id.child_id.filtered(lambda item: item.is_visible)" href="/shop" class="kv-mobile-link">Boutique</a>
+                            <a t-if="not website.menu_id.child_id.filtered(lambda item: item.is_visible)" href="/contactus" class="kv-mobile-link">Contact</a>
+                        </div>
+
+                        <div class="kv-mobile-actions">
+                            <a t-if="user_id._is_public()" href="/web/login?redirect=/my/home" class="kv-mobile-link">Connexion</a>
+                            <a t-else="" href="/my/home" class="kv-mobile-link">Mon portail</a>
+                            <a href="/shop/wishlist" class="kv-mobile-link">Favoris</a>
+                            <a href="/shop/cart" class="kv-mobile-link">Panier</a>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

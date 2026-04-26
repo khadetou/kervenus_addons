@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="theme_keurvenus_shop_layout" inherit_id="website_sale.products" name="Theme Keur Venus Shop Layout">
+        <xpath expr="//div[@id='wrap']" position="attributes">
+            <attribute name="class" add="kv-shop-page" separator=" "/>
+        </xpath>
+
+        <xpath expr="//div[@id='o_wsale_container']" position="attributes">
+            <attribute name="class" add="kv-shop-shell" separator=" "/>
+        </xpath>
+
+        <xpath expr="//div[hasclass('o_wsale_products_main_row')]" position="attributes">
+            <attribute name="class" add="kv-shop-main-row" separator=" "/>
+        </xpath>
+
+        <xpath expr="//div[hasclass('o_wsale_products_main_row')]" position="before">
+            <section class="kv-shop-hero kv-panel">
+                <div class="kv-shop-hero__content">
+                    <div class="kv-eyebrow">
+                        <iconify-icon icon="solar:stars-minimalistic-linear"/>
+                        boutique premium
+                    </div>
+                    <h1 t-if="category">Decouvrez l'univers <t t-esc="category.name"/>.</h1>
+                    <h1 t-elif="search">Resultats pour "<t t-esc="search"/>"</h1>
+                    <h1 t-else="">Decouvrez toute la collection Ker Venus.</h1>
+                    <div t-if="category and category.website_description" class="kv-shop-hero__desc" t-field="category.website_description"/>
+                    <p t-elif="category">
+                        Parcourez les references, matieres et pieces signatures de cette categorie dans un esprit maison doux, elegant et contemporain.
+                    </p>
+                    <p t-elif="search">
+                        Une selection maison pour retrouver rapidement vos pieces, matieres et coups de coeur.
+                    </p>
+                    <p t-else="">
+                        Une selection pensee pour la maison: vaisselle, decoration interieure, linge de maison et bien-etre dans une atmosphere douce, elegante et contemporaine.
+                    </p>
+                </div>
+            </section>
+        </xpath>
+
+        <xpath expr="//aside[@id='products_grid_before']" position="attributes">
+            <attribute name="class" add="kv-shop-sidebar" separator=" "/>
+        </xpath>
+
+        <xpath expr="//div[hasclass('o_wsale_products_grid_before_rail')]" position="attributes">
+            <attribute name="class" remove="vh-100 ms-n2 px-lg-2 ps-2 overflow-y-scroll" separator=" "/>
+            <attribute name="class" add="kv-shop-sidebar__rail" separator=" "/>
+        </xpath>
+
+        <xpath expr="//div[hasclass('o_wsale_products_grid_before_rail')]/*[1]" position="before">
+            <div class="kv-shop-sidebar__intro">
+                <h2>Filtres</h2>
+                <p>Affinez la boutique par univers, couleur, matiere et budget.</p>
+            </div>
+        </xpath>
+
+        <xpath expr="//header[@id='o_wsale_products_header']" position="replace">
+            <header id="o_wsale_products_header" class="kv-shop-header">
+                <div class="kv-catalog-head kv-panel">
+                    <div class="kv-catalog-copy">
+                        <h2>La boutique</h2>
+                        <p>Des pieces aux lignes douces, matieres naturelles et finitions elegantes pour sublimer chaque espace du foyer.</p>
+                    </div>
+                    <div class="kv-chip-row">
+                        <button class="kv-chip active" type="button">Tous</button>
+                        <button class="kv-chip" type="button">Nouveautes</button>
+                        <button class="kv-chip" type="button">Best sellers</button>
+                        <button class="kv-chip" type="button">Edition maison</button>
+                    </div>
+                </div>
+
+                <div class="kv-results-bar">
+                    <span><t t-esc="search_count or 0"/> produits affiches</span>
+                    <div class="kv-results-bar__controls">
+                        <button
+                            t-if="opt_wsale_categories or opt_wsale_attributes or opt_wsale_attributes_top"
+                            class="kv-chip d-lg-none"
+                            data-bs-toggle="offcanvas"
+                            data-bs-target="#o_wsale_offcanvas"
+                            title="Filtres"
+                            type="button"
+                        >
+                            Filtres
+                        </button>
+                        <div class="kv-sort-box" t-if="is_view_active('website_sale.sort')">
+                            <t t-call="website_sale.sort">
+                                <t t-set="_classes" t-valuef=""/>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </header>
+        </xpath>
+
+        <xpath expr="//section[@id='o_wsale_products_grid']" position="attributes">
+            <attribute name="class" add="kv-products-grid-layout" separator=" "/>
+        </xpath>
+
+        <xpath expr="//t[@t-set='col_class']" position="attributes">
+            <attribute name="t-valuef">g-col-12</attribute>
+        </xpath>
+
+        <xpath expr="//div[@id='o_wsale_pager']" position="before">
+            <section t-if="products" class="kv-bottom-banner kv-panel">
+                <div class="kv-bottom-banner__copy">
+                    <div class="kv-eyebrow">edition maison</div>
+                    <h3>Des pieces choisies pour faire respirer votre interieur.</h3>
+                    <p>Ker Venus compose une boutique qui mele objets utiles, matieres nobles et details qui installent une vraie atmosphere.</p>
+                    <a href="/shop" class="kv-cta-primary">Explorer l'edition</a>
+                </div>
+                <div class="kv-bottom-banner__visual"/>
+            </section>
+        </xpath>
+
+        <xpath expr="//div[@id='o_wsale_pager']" position="attributes">
+            <attribute name="class" add="kv-shop-pager" separator=" "/>
+        </xpath>
+    </template>
+
+    <template id="theme_keurvenus_shop_offcanvas" inherit_id="website_sale.o_wsale_offcanvas" name="Theme Keur Venus Shop Offcanvas">
+        <xpath expr="//aside[@id='o_wsale_offcanvas']" position="attributes">
+            <attribute name="class" add="kv-shop-offcanvas" separator=" "/>
+        </xpath>
+    </template>
+
+    <template id="theme_keurvenus_shop_product_card" inherit_id="website_sale.products_item" name="Theme Keur Venus Product Card">
+        <xpath expr="//form" position="replace">
+            <form
+                action="/shop/cart/update"
+                method="post"
+                t-attf-class="oe_product_cart kv-shop-product-card"
+                t-att-data-publish="product.website_published and 'on' or 'off'"
+            >
+                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                <t t-set="variant" t-value="product_variant or request.env['product.product'].browse(product._get_first_possible_variant_id())"/>
+                <t t-set="all_images_list" t-value="(variant and variant.image_128 and variant._get_images()) or product._get_images()"/>
+                <t t-set="primary_image_holder" t-value="(all_images_list[:1] + [product])[0]"/>
+
+                <div class="kv-shop-product-card__visual">
+                    <a t-att-href="product_href">
+                        <span
+                            t-field="primary_image_holder.image_1920"
+                            t-options="{'widget': 'image', 'preview_image': 'image_1024', 'class': 'img-fluid'}"
+                        />
+                    </a>
+                    <span
+                        t-if="show_ribbons and ribbon and ribbon.name"
+                        t-out="ribbon.name"
+                        class="kv-shop-product-card__badge"
+                        t-attf-style="#{ribbon.text_color and ('color: %s;' % ribbon.text_color)} #{ribbon.bg_color and 'background-color:' + ribbon.bg_color}"
+                    />
+                    <button
+                        t-if="variant"
+                        type="button"
+                        class="kv-wish-btn o_add_wishlist"
+                        t-att-data-product-template-id="product.id"
+                        t-att-data-product-product-id="variant.id"
+                        data-action="o_wishlist"
+                        aria-label="Ajouter aux favoris"
+                        title="Ajouter aux favoris"
+                    >
+                        <iconify-icon icon="solar:heart-linear"/>
+                    </button>
+                </div>
+
+                <div class="kv-shop-product-card__meta">
+                    <div class="kv-shop-product-card__copy">
+                        <h3><a t-att-href="product_href" t-field="product.name"/></h3>
+                        <p t-if="product.description_sale"><span t-field="product.description_sale"/></p>
+                        <p t-else=""><t t-esc="product.public_categ_ids[:1] and product.public_categ_ids[0].name or 'Selection maison'"/></p>
+                    </div>
+                    <div class="kv-price">
+                        <strong
+                            t-if="template_price_vals['price_reduce'] or not website.prevent_zero_price_sale"
+                            t-out="template_price_vals['price_reduce']"
+                            t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"
+                        />
+                    </div>
+                </div>
+
+                <div class="kv-rating">
+                    <iconify-icon icon="solar:star-bold"/>
+                    <span>
+                        <t t-esc="'%.1f' % (product.sudo().rating_avg or 4.8)"/>
+                        ·
+                        <t t-if="product.rating_count"><t t-esc="product.rating_count"/> avis</t>
+                        <t t-else="">Boutique</t>
+                    </span>
+                </div>
+
+                <input t-if="variant and product._website_show_quick_add()" type="hidden" name="product_id" t-att-value="variant.id"/>
+                <input t-if="variant and product._website_show_quick_add()" type="hidden" name="product_template_id" t-att-value="product.id"/>
+                <input t-if="variant and product._website_show_quick_add()" type="hidden" name="product_type" t-att-value="product.type"/>
+
+                <div class="kv-shop-product-card__foot">
+                    <div t-if="variant and product._website_show_quick_add()" class="kv-shop-product-card__qty css_quantity input-group" contenteditable="false">
+                        <a
+                            href="#"
+                            class="qty-btn btn btn-link js_add_cart_json css_quantity_minus border-0"
+                            aria-label="Retirer un article"
+                            title="Retirer un article"
+                            name="remove_one"
+                        >
+                            <i class="oi oi-minus"/>
+                        </a>
+                        <input
+                            type="text"
+                            class="form-control quantity text-center border-0"
+                            data-min="1"
+                            name="add_qty"
+                            t-att-value="1"
+                        />
+                        <a
+                            href="#"
+                            class="qty-btn btn btn-link js_add_cart_json css_quantity_plus border-0"
+                            aria-label="Ajouter un article"
+                            title="Ajouter un article"
+                        >
+                            <i class="oi oi-plus"/>
+                        </a>
+                    </div>
+                    <div t-if="variant and product._website_show_quick_add()" class="o_wsale_product_btn">
+                        <a
+                            href="#"
+                            class="a-submit kv-add-btn btn"
+                            aria-label="Ajouter au panier"
+                            title="Ajouter au panier"
+                            data-show-quantity="true"
+                        >
+                            Ajouter
+                            <iconify-icon icon="solar:bag-4-linear"/>
+                        </a>
+                    </div>
+                    <a t-else="" class="kv-add-btn kv-add-btn--link" t-att-href="product_href">
+                        Voir le produit
+                    </a>
+                </div>
+            </form>
+        </xpath>
+    </template>
+</odoo>
