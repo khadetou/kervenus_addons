@@ -49,13 +49,20 @@ export function ProductCard({ product }: { product: Product }) {
       )}
     >
       <div className="flex min-h-0 w-full flex-col">
-        <AspectRatio ratio={1 / 1} className="overflow-hidden rounded-[1.2rem] bg-cream">
-          <Link to="/shop/$slug" params={{ slug: product.slug }}>
+        <AspectRatio
+          ratio={4 / 5}
+          className="overflow-hidden rounded-[1.2rem] bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.95),rgba(246,239,229,0.72)_48%,rgba(238,229,215,0.92))]"
+        >
+          <Link
+            to="/shop/$slug"
+            params={{ slug: product.slug }}
+            className="absolute inset-0 grid place-items-center px-6 pb-14 pt-10"
+          >
             <img
               src={product.images[0]}
               alt={product.name}
               className={cn(
-                "h-full w-full object-cover transition duration-700 group-hover:scale-105",
+                "max-h-[88%] max-w-[88%] object-contain drop-shadow-[0_18px_28px_rgba(23,23,23,0.13)] transition duration-700 group-hover:scale-[1.02]",
                 isUnpublished && "opacity-45 grayscale-[20%]"
               )}
               loading="lazy"

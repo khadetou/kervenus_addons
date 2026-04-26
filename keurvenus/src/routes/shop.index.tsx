@@ -154,8 +154,8 @@ function ShopPage() {
   const heroImage = activeCategory
     ? categoryImageFor(activeCategory.name, activeCategory.slug, activeCategory.image)
     : selectedCategory
-      ? categoryImageFor("", selectedCategory, "/assets/landing/hero-table-signature.webp")
-    : "/assets/landing/hero-table-signature.webp"
+      ? categoryImageFor("", selectedCategory, "/assets/landing/banner-art-table.png")
+    : "/assets/landing/banner-art-table.png"
   const heroPosition = activeCategory
     ? categoryImagePosition(activeCategory.name, activeCategory.slug)
     : selectedCategory

@@ -182,7 +182,7 @@ export function HeroSection() {
                     <div data-hero-item className="mt-9 flex flex-col gap-3 sm:flex-row">
                       <Button
                         asChild
-                        className="h-12 rounded-full bg-gold px-7 text-charcoal shadow-[0_16px_36px_rgba(185,154,91,0.26)] hover:bg-champagne"
+                        className="h-12 rounded-full border border-champagne/40 bg-[linear-gradient(135deg,#d8b66a,#b9954f)] px-7 font-semibold text-charcoal shadow-[0_18px_44px_rgba(185,149,79,0.34)] hover:-translate-y-0.5 hover:border-ivory/70 hover:bg-[linear-gradient(135deg,#f1d99d,#c7a159)] hover:text-charcoal"
                       >
                         {slide.productSlug ? (
                           <Link to="/shop/$slug" params={{ slug: slide.productSlug }}>
@@ -199,7 +199,7 @@ export function HeroSection() {
                       <Button
                         asChild
                         variant="outline"
-                        className="h-12 rounded-full border-white/30 bg-white/10 px-7 text-ivory backdrop-blur hover:bg-white/18"
+                        className="h-12 rounded-full border border-ivory/42 bg-charcoal/22 px-7 font-medium text-ivory shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_34px_rgba(0,0,0,0.18)] backdrop-blur-md hover:-translate-y-0.5 hover:border-champagne/70 hover:bg-ivory/92 hover:text-charcoal"
                       >
                         {slide.categorySlug ? (
                           <Link to="/shop" search={{ category: slide.categorySlug }}>
@@ -231,9 +231,9 @@ export function HeroSection() {
                       {slide.tags.map((label, tagIndex) => (
                         <div
                           key={`${label}-${tagIndex}`}
-                          className="rounded-2xl border border-white/12 bg-white/10 px-3 py-3"
+                          className="rounded-2xl border border-champagne/20 bg-ivory/10 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
                         >
-                          <p className="text-[11px] uppercase tracking-[0.16em] text-ivory/58">
+                          <p className="text-[11px] uppercase tracking-[0.16em] text-ivory/76">
                             {label}
                           </p>
                         </div>
