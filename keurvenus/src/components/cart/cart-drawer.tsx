@@ -37,7 +37,7 @@ export function CartDrawer() {
 
   return (
     <Sheet open={isCartOpen} onOpenChange={setCartOpen}>
-      <SheetContent className="w-[94vw] max-w-md border-l border-white/70 bg-ivory p-0">
+      <SheetContent className="w-[94vw] max-w-md overflow-hidden border-l border-white/70 bg-ivory p-0">
         <SheetHeader className="border-b border-charcoal/10 p-5 text-left">
           <SheetTitle className="font-serif text-3xl">Panier Kër Venus</SheetTitle>
           <SheetDescription className="text-sm text-warm-gray">
@@ -66,7 +66,7 @@ export function CartDrawer() {
             ))
           )}
         </div>
-        <div className="border-t border-charcoal/10 bg-white/60 p-5">
+        <div className="border-t border-charcoal/10 bg-white/60 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
           <div className="mb-4 flex items-center justify-between font-semibold">
             <span>Sous-total</span>
             <span>{formatPrice(subtotal)}</span>

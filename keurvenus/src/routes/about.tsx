@@ -2,8 +2,18 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { BenefitsSection } from "@/components/sections/benefits-section"
 import { BrandStory } from "@/components/sections/brand-story"
+import { seoHead } from "@/lib/seo"
 
-export const Route = createFileRoute("/about")({ component: AboutPage })
+export const Route = createFileRoute("/about")({
+  head: () =>
+    seoHead({
+      title: "À propos | Kër Venus",
+      description:
+        "Découvrez l'univers Kër Venus: une boutique maison à Dakar pensée pour la vaisselle, la décoration et les objets du quotidien raffinés.",
+      path: "/about",
+    }),
+  component: AboutPage,
+})
 
 function AboutPage() {
   return (

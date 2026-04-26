@@ -1,4 +1,5 @@
 import { collections as fallbackCollections, products as fallbackProducts } from "@/data/site-content"
+import { categoryImageFor } from "@/lib/category-media"
 import type {
   CartLine,
   Collection,
@@ -16,6 +17,9 @@ import type {
 
 const API_PREFIX = "/api/keurvenus/storefront"
 const directOdooBase = (import.meta.env.VITE_ODOO_API_BASE_URL || "").replace(/\/$/, "")
+const serverOdooBase = (
+  typeof window === "undefined" ? process.env.ODOO_PROXY_TARGET || "http://127.0.0.1:8069" : ""
+).replace(/\/$/, "")
 const proxiedApiBase = (
   import.meta.env.VITE_ODOO_API_BASE || "/api/odoo/keurvenus/storefront"
 ).replace(/\/$/, "")
@@ -50,6 +54,7 @@ type ProductQueryOptions = {
 function apiUrl(path: string) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`
   if (directOdooBase) return `${directOdooBase}${API_PREFIX}${normalizedPath}`
+  if (serverOdooBase) return `${serverOdooBase}${API_PREFIX}${normalizedPath}`
   return `${proxiedApiBase}${normalizedPath}`
 }
 
@@ -249,15 +254,20 @@ export function mapOdooProduct(item: OdooProductPayload): Product {
 }
 
 function mapOdooCollection(item: OdooCollectionPayload, index: number): Collection {
+  const slug = item.slug || String(item.id || index)
+  const name = item.name || "Collection"
+  const fallbackImage =
+    normalizeAssetUrl(item.image_url) || fallbackCollections[index % fallbackCollections.length]?.image || ""
+
   return {
     id: String(item.id || item.slug || index),
-    slug: item.slug || String(item.id || index),
-    name: item.name || "Collection",
+    slug,
+    name,
     description:
       item.description ||
       item.eyebrow ||
       "Une sélection Kër Venus pensée pour composer une maison élégante.",
-    image: normalizeAssetUrl(item.image_url) || fallbackCollections[index % fallbackCollections.length]?.image,
+    image: categoryImageFor(name, slug, fallbackImage),
     productCount: Number(item.product_count ?? item.count ?? 0),
     featured: Boolean(item.featured ?? index < 6),
     parentId: item.parent_id ? Number(item.parent_id) : undefined,

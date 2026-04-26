@@ -6,11 +6,8 @@ import {
   createRootRoute,
   useLocation,
 } from "@tanstack/react-router"
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
-import { TanStackDevtools } from "@tanstack/react-devtools"
 import { QueryClientProvider } from "@tanstack/react-query"
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
-import { useEffect, useState, type ReactNode } from "react"
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react"
 
 import { AppIcon } from "@/components/icons/icon"
 import { PageShell } from "@/components/layout/page-shell"
@@ -19,6 +16,40 @@ import { CartProvider } from "@/hooks/use-cart"
 import { WishlistProvider } from "@/hooks/use-wishlist"
 import { createQueryClient } from "@/lib/query-client"
 import appCss from "@/styles.css?url"
+
+const LocalReactQueryDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import("@tanstack/react-query-devtools").then((module) => ({
+        default: module.ReactQueryDevtools,
+      }))
+    )
+  : null
+
+const LocalTanStackDevtools = import.meta.env.DEV
+  ? lazy(async () => {
+      const [{ TanStackDevtools }, { TanStackRouterDevtoolsPanel }] = await Promise.all([
+        import("@tanstack/react-devtools"),
+        import("@tanstack/react-router-devtools"),
+      ])
+
+      return {
+        default: function LocalTanStackDevtoolsPanelHost() {
+          return (
+            <TanStackDevtools
+              config={{ position: "bottom-right" }}
+              plugins={[
+                {
+                  name: "Tanstack Router",
+                  render: <TanStackRouterDevtoolsPanel />,
+                },
+              ]}
+            />
+          )
+        },
+      }
+    })
+  : null
+const ODOO_FAVICON_URL = "/odoo/odoo_debranding/favicon"
 
 export const Route = createRootRoute({
   head: () => ({
@@ -39,6 +70,10 @@ export const Route = createRootRoute({
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap",
       },
+      { rel: "icon", href: ODOO_FAVICON_URL },
+      { rel: "shortcut icon", href: ODOO_FAVICON_URL },
+      { rel: "apple-touch-icon", href: ODOO_FAVICON_URL },
+      { rel: "manifest", href: "/manifest.json" },
       { rel: "stylesheet", href: appCss },
     ],
   }),
@@ -49,6 +84,7 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   const [queryClient] = useState(() => createQueryClient())
+  const showDevtools = useLocalDevtools()
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -60,9 +96,28 @@ function RootComponent() {
           </PageShell>
         </WishlistProvider>
       </CartProvider>
-      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      {showDevtools && LocalReactQueryDevtools ? (
+        <Suspense fallback={null}>
+          <LocalReactQueryDevtools initialIsOpen={false} />
+        </Suspense>
+      ) : null}
     </QueryClientProvider>
   )
+}
+
+function useLocalDevtools() {
+  const [enabled, setEnabled] = useState(false)
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || typeof window === "undefined") return
+    setEnabled(isLocalHostname(window.location.hostname))
+  }, [])
+
+  return enabled
+}
+
+function isLocalHostname(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
 }
 
 function StorefrontHostBridge() {
@@ -192,6 +247,8 @@ function StorefrontNotFound() {
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const showDevtools = useLocalDevtools()
+
   return (
     <html lang="fr">
       <head>
@@ -199,17 +256,11 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
-        {import.meta.env.DEV && (
-          <TanStackDevtools
-            config={{ position: "bottom-right" }}
-            plugins={[
-              {
-                name: "Tanstack Router",
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-            ]}
-          />
-        )}
+        {showDevtools && LocalTanStackDevtools ? (
+          <Suspense fallback={null}>
+            <LocalTanStackDevtools />
+          </Suspense>
+        ) : null}
         <Scripts />
       </body>
     </html>

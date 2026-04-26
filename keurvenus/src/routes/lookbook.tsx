@@ -3,8 +3,18 @@ import { Link, createFileRoute } from "@tanstack/react-router"
 import { AppIcon } from "@/components/icons/icon"
 import { Button } from "@/components/ui/button"
 import { useLookbook } from "@/hooks/use-lookbook"
+import { seoHead } from "@/lib/seo"
 
-export const Route = createFileRoute("/lookbook")({ component: LookbookPage })
+export const Route = createFileRoute("/lookbook")({
+  head: () =>
+    seoHead({
+      title: "Lookbook maison | Kër Venus",
+      description:
+        "Inspirez vos ambiances maison avec le lookbook Kër Venus: idées de table, décoration, cuisine et art de vivre.",
+      path: "/lookbook",
+    }),
+  component: LookbookPage,
+})
 
 function LookbookPage() {
   const { data: items = [] } = useLookbook()

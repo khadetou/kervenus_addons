@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router"
 import { AppIcon } from "@/components/icons/icon"
 import { Card } from "@/components/ui/card"
 import { useCollections } from "@/hooks/use-collections"
+import { categoryImageFor, categoryImagePosition } from "@/lib/category-media"
 import { landingImageForIndex, landingStoryBanners } from "@/lib/landing-assets"
 import { buildCategoryTree } from "@/lib/odoo-api"
 
@@ -38,7 +39,7 @@ export function CategoryShowcase() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {categories.map((category, index) => {
           const landingImage = landingImageForIndex(index)
-          const image = category.image || landingImage.src
+          const image = categoryImageFor(category.name, category.slug, category.image || landingImage.src)
           return (
             <Card
               key={`${category.id}-${category.slug}-${index}`}
@@ -51,7 +52,7 @@ export function CategoryShowcase() {
                 style={{
                   backgroundImage: `linear-gradient(180deg, rgba(23,23,23,.08), rgba(23,23,23,.62)), url('${image}')`,
                   backgroundSize: "cover",
-                  backgroundPosition: "center",
+                  backgroundPosition: categoryImagePosition(category.name, category.slug),
                 }}
               >
                 <span className="absolute left-5 top-5 grid size-11 place-items-center rounded-full bg-white/18 backdrop-blur transition group-hover:bg-white/26">

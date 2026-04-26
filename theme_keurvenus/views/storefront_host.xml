@@ -4,9 +4,22 @@
         <t t-set="no_header" t-value="True"/>
         <t t-set="no_footer" t-value="True"/>
         <t t-set="body_classname" t-value="'kv-storefront-host-page'"/>
-        <t t-set="additional_title" t-value="main_object.display_name if main_object else 'Keur Venus'"/>
+        <t t-set="title" t-value="seo_title"/>
+        <t t-set="website_meta_description" t-value="seo_description"/>
+        <t t-set="website_meta_keywords" t-value="seo_keywords"/>
+        <t t-set="additional_title" t-value="seo_title"/>
         <t t-call="website.layout">
             <div id="wrap" class="kv-storefront-host" t-att-data-storefront-path="storefront_path">
+                <script type="application/ld+json" t-out="seo_json_ld"/>
+                <noscript>
+                    <section class="kv-storefront-noscript">
+                        <h1 t-esc="seo_title"/>
+                        <p t-esc="seo_description"/>
+                        <p>
+                            <a t-att-href="seo_canonical_url">Ouvrir la page Kër Venus</a>
+                        </p>
+                    </section>
+                </noscript>
                 <script type="text/javascript">
                     <![CDATA[
                     (function () {
@@ -34,7 +47,7 @@
                 <iframe
                     class="kv-storefront-host__frame"
                     t-att-src="storefront_url"
-                    title="Keur Venus Storefront"
+                    t-att-title="seo_title"
                     allow="clipboard-write; fullscreen">
                 </iframe>
             </div>

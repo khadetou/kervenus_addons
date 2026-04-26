@@ -50,7 +50,7 @@ export function WishlistDrawer() {
 
   return (
     <Sheet open={isWishlistOpen} onOpenChange={setWishlistOpen}>
-      <SheetContent className="w-[94vw] max-w-md border-l border-white/70 bg-ivory p-0">
+      <SheetContent className="w-[94vw] max-w-md overflow-hidden border-l border-white/70 bg-ivory p-0">
         <SheetHeader className="border-b border-charcoal/10 p-5 text-left">
           <SheetTitle className="font-serif text-3xl">Favoris Kër Venus</SheetTitle>
           <SheetDescription className="text-sm text-warm-gray">
@@ -77,13 +77,13 @@ export function WishlistDrawer() {
               <article
                 data-wishlist-line
                 key={product.id}
-                className="grid grid-cols-[88px_1fr] gap-4 rounded-3xl border border-charcoal/10 bg-white/70 p-3"
+                className="grid grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-[1.5rem] border border-charcoal/10 bg-white/80 p-2.5 shadow-[0_18px_45px_rgba(23,23,23,0.06)] sm:grid-cols-[88px_minmax(0,1fr)] sm:gap-4 sm:rounded-3xl sm:p-3"
               >
                 <Link to="/shop/$slug" params={{ slug: product.slug }} onClick={closeWishlist}>
                   <img
                     src={product.images[0]}
                     alt={product.name}
-                    className="h-24 w-full rounded-2xl object-cover"
+                    className="h-20 w-full rounded-[1.15rem] bg-ivory object-contain p-1 sm:h-24 sm:rounded-2xl"
                     loading="lazy"
                   />
                 </Link>
@@ -94,7 +94,7 @@ export function WishlistDrawer() {
                         to="/shop/$slug"
                         params={{ slug: product.slug }}
                         onClick={closeWishlist}
-                        className="line-clamp-1 font-serif text-xl leading-none hover:text-gold"
+                      className="line-clamp-1 font-serif text-lg leading-none hover:text-gold sm:text-xl"
                       >
                         {product.name}
                       </Link>
@@ -105,20 +105,20 @@ export function WishlistDrawer() {
                     <button
                       type="button"
                       onClick={() => removeProduct(product.id)}
-                      className="text-warm-gray hover:text-charcoal"
+                      className="shrink-0 text-warm-gray hover:text-charcoal"
                       aria-label={`Retirer ${product.name} des favoris`}
                     >
                       <AppIcon icon="solar:close-circle-linear" className="size-5" />
                     </button>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <strong className="text-sm">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 sm:mt-4 sm:gap-3">
+                    <strong className="min-w-fit text-[13px] sm:text-sm">
                       {formatPrice(product.price, product.currency)}
                     </strong>
                     <Button
                       type="button"
                       size="sm"
-                      className="h-9 rounded-full bg-charcoal px-4 text-ivory hover:bg-charcoal/90"
+                      className="ml-auto h-8 rounded-full bg-charcoal px-3 text-xs text-ivory hover:bg-charcoal/90 sm:h-9 sm:px-4 sm:text-[0.8rem]"
                       onClick={() => moveToCart(product)}
                     >
                       Ajouter
@@ -131,7 +131,7 @@ export function WishlistDrawer() {
           )}
         </div>
         {products.length ? (
-          <div className="border-t border-charcoal/10 bg-white/60 p-5">
+          <div className="border-t border-charcoal/10 bg-white/60 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
             <Button asChild className="h-11 w-full rounded-full bg-charcoal text-ivory hover:bg-charcoal/90">
               <Link to="/wishlist" onClick={closeWishlist}>
                 Voir tous les favoris

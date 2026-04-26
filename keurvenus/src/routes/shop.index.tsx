@@ -26,6 +26,8 @@ import {
 import { Slider } from "@/components/ui/slider"
 import { useProductsInfinite, useProductsPage, useShopFilters, useStorefrontConfig } from "@/hooks/use-products"
 import { useSession } from "@/hooks/use-session"
+import { categoryImageFor, categoryImagePosition } from "@/lib/category-media"
+import { categorySeoFor, seoHead, shopStructuredData } from "@/lib/seo"
 import type { StorefrontAttributeFilter, StorefrontPriceFilter } from "@/lib/types"
 
 type ShopSearch = {
@@ -45,6 +47,37 @@ export const Route = createFileRoute("/shop/")({
       if (Number.isFinite(page) && page > 0) result.page = page
     }
     return result
+  },
+  head: ({ match }) => {
+    const search = match.search as ShopSearch
+    const categorySlug = search.category
+    if (categorySlug) {
+      const seo = categorySeoFor({ slug: categorySlug })
+      return seoHead({
+        title: seo.title,
+        description: seo.description,
+        path: seo.path,
+        image: seo.image,
+        keywords: seo.keywords,
+        structuredData: seo.structuredData,
+      })
+    }
+
+    return seoHead({
+      title: "Boutique Kër Venus | Vaisselle, verrerie, cuisine et maison à Dakar",
+      description:
+        "Explorez la boutique Kër Venus à Dakar: vaisselle, verrerie, accessoires de cuisine, batteries de cuisine, rangement, décoration et pièces maison.",
+      path: "/shop",
+      keywords: [
+        "boutique maison Dakar",
+        "vaisselle Dakar",
+        "verrerie Dakar",
+        "cuisine Dakar",
+        "batterie de cuisine Dakar",
+        "décoration intérieure Dakar",
+      ],
+      structuredData: shopStructuredData(),
+    })
   },
   component: ShopPage,
 })
@@ -110,6 +143,24 @@ function ShopPage() {
   }, [filters?.categories])
 
   const activeCategory = categoryOptions.find((item) => item.slug === category)
+  const categorySeo = selectedCategory
+    ? categorySeoFor(activeCategory ?? { slug: selectedCategory })
+    : null
+  const heroTitle = activeCategory?.name || categorySeo?.name || "Découvrez toute la collection Kër Venus."
+  const heroDescription =
+    activeCategory?.description ||
+    categorySeo?.description ||
+    "Vaisselle, verrerie, cuisine, rangement et pièces maison sélectionnées pour un quotidien plus élégant."
+  const heroImage = activeCategory
+    ? categoryImageFor(activeCategory.name, activeCategory.slug, activeCategory.image)
+    : selectedCategory
+      ? categoryImageFor("", selectedCategory, "/assets/landing/hero-table-signature.webp")
+    : "/assets/landing/hero-table-signature.webp"
+  const heroPosition = activeCategory
+    ? categoryImagePosition(activeCategory.name, activeCategory.slug)
+    : selectedCategory
+      ? categoryImagePosition("", selectedCategory)
+    : "center 48%"
 
   const filtered = useMemo(() => {
     const list = products
@@ -184,21 +235,23 @@ function ShopPage() {
   return (
     <main className="mx-auto mt-10 w-[min(1560px,calc(100vw-32px))]">
       <section
-        className="grid min-h-[380px] content-end rounded-[2rem] bg-cover bg-center p-8 text-ivory shadow-luxury"
+        className="relative grid min-h-[360px] overflow-hidden rounded-[2rem] bg-charcoal p-6 text-ivory shadow-luxury sm:p-8 lg:min-h-[430px] lg:p-10"
         style={{
-          backgroundImage:
-            "linear-gradient(90deg, rgba(23,23,23,.72), rgba(23,23,23,.18)), url('https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1600&q=80')",
+          backgroundImage: `url('${heroImage}')`,
+          backgroundPosition: heroPosition,
+          backgroundSize: "cover",
         }}
       >
-        <p className="text-xs uppercase tracking-[0.22em] text-champagne">boutique</p>
-        <h1 className="mt-3 max-w-3xl font-serif text-6xl leading-none">
-          {activeCategory ? activeCategory.name : "Découvrez toute la collection Kër Venus."}
-        </h1>
-        {activeCategory ? (
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(23,23,23,.78),rgba(23,23,23,.38)_48%,rgba(23,23,23,.14)),linear-gradient(180deg,rgba(23,23,23,.04),rgba(23,23,23,.50))]" />
+        <div className="relative z-10 mt-auto max-w-3xl">
+          <p className="text-xs uppercase tracking-[0.22em] text-champagne">Boutique</p>
+          <h1 className="mt-3 font-serif text-5xl leading-none sm:text-6xl lg:text-7xl">
+            {heroTitle}
+          </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-ivory/82">
-            {activeCategory.description}
+            {heroDescription}
           </p>
-        ) : null}
+        </div>
       </section>
       {isInternalUser ? (
         <section className="mt-5 rounded-[1.45rem] border border-charcoal/8 bg-charcoal p-3 text-ivory shadow-luxury">

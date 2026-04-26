@@ -142,14 +142,14 @@ export function HeroSection() {
   return (
     <section
       ref={sectionRef}
-      className="mx-auto mt-5 w-[min(1760px,calc(100vw-32px))] overflow-hidden rounded-[2.4rem] border border-white/70 bg-charcoal text-ivory shadow-luxury"
+      className="mx-auto mt-5 w-[min(1760px,calc(100vw-32px))] overflow-hidden rounded-[2rem] border border-white/70 bg-charcoal text-ivory shadow-luxury md:rounded-[2.4rem]"
       aria-label="Keur Venus collections mises en avant"
     >
       <Carousel setApi={setApi} opts={{ align: "start", loop: true }}>
         <CarouselContent className="-ml-0">
           {heroSlides.map((slide, index) => (
             <CarouselItem key={`${slide.productSlug || slide.categorySlug || slide.eyebrow}-${index}`} data-slide={index} className="pl-0">
-              <div className="relative grid min-h-[720px] overflow-hidden lg:min-h-[760px]">
+              <div className="relative grid min-h-[610px] overflow-hidden sm:min-h-[660px] lg:min-h-[690px]">
                 <div
                   data-hero-image
                   className="absolute inset-0 bg-charcoal bg-cover bg-center"
@@ -157,25 +157,25 @@ export function HeroSection() {
                     slide.image ? { backgroundImage: `url('${slide.image}')` } : undefined
                   }
                 />
-                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(23,23,23,.82),rgba(23,23,23,.46)_42%,rgba(23,23,23,.14)_78%),linear-gradient(180deg,rgba(23,23,23,.1),rgba(23,23,23,.55))]" />
-                <div className="relative z-10 grid items-end gap-10 p-6 sm:p-8 md:p-12 lg:grid-cols-[minmax(0,0.95fr)_420px] lg:p-16 xl:grid-cols-[minmax(0,0.95fr)_480px] xl:p-20">
-                  <div className="max-w-5xl pb-10 lg:pb-0">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_38%,rgba(255,255,255,.08),transparent_28%),linear-gradient(90deg,rgba(23,23,23,.80),rgba(23,23,23,.48)_40%,rgba(23,23,23,.16)_76%),linear-gradient(180deg,rgba(23,23,23,.05),rgba(23,23,23,.50))]" />
+                <div className="relative z-10 grid items-end gap-8 p-6 sm:p-8 md:p-12 lg:grid-cols-[minmax(0,0.95fr)_360px] lg:p-14 xl:grid-cols-[minmax(0,0.95fr)_420px] xl:p-16">
+                  <div className="max-w-4xl pb-12 lg:pb-4">
                     <div
                       data-hero-item
-                      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-4 py-2 text-xs uppercase tracking-[0.22em] text-ivory/88 backdrop-blur"
+                      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-ivory/88 backdrop-blur"
                     >
                       <AppIcon icon={slide.icon} className="size-4 text-champagne" />
                       {slide.eyebrow}
                     </div>
                     <h1
                       data-hero-item
-                      className="mt-7 max-w-5xl font-serif text-5xl leading-[0.92] text-white sm:text-6xl md:text-7xl xl:text-8xl"
+                      className="mt-7 max-w-4xl font-serif text-4xl leading-[0.96] text-white sm:text-5xl md:text-6xl xl:text-7xl"
                     >
                       {slide.title}
                     </h1>
                     <p
                       data-hero-item
-                      className="mt-6 max-w-3xl text-base leading-8 text-ivory/82 md:text-lg xl:text-xl"
+                      className="mt-6 max-w-2xl text-sm leading-7 text-ivory/82 md:text-base xl:text-lg"
                     >
                       {slide.subtitle}
                     </p>
@@ -214,7 +214,7 @@ export function HeroSection() {
 
                   <div
                     data-hero-item
-                    className="hidden self-end rounded-[1.8rem] border border-white/18 bg-white/12 p-5 shadow-[0_20px_80px_rgba(0,0,0,.18)] backdrop-blur-xl lg:block"
+                    className="hidden self-end rounded-[1.5rem] border border-white/16 bg-white/12 p-5 shadow-[0_20px_80px_rgba(0,0,0,.18)] backdrop-blur-xl lg:block"
                   >
                     <div className="flex items-center justify-between gap-5 border-b border-white/15 pb-5">
                       <span className="text-xs uppercase tracking-[0.22em] text-champagne">
@@ -224,14 +224,14 @@ export function HeroSection() {
                         {String(index + 1).padStart(2, "0")} / {heroSlides.length}
                       </span>
                     </div>
-                    <p className="mt-5 font-serif text-3xl leading-tight text-white">
+                    <p className="mt-5 font-serif text-2xl leading-tight text-white">
                       {slide.mood}
                     </p>
-                    <div className="mt-8 grid grid-cols-3 gap-3 text-center">
+                    <div className="mt-6 grid grid-cols-3 gap-2 text-center">
                       {slide.tags.map((label, tagIndex) => (
                         <div
                           key={`${label}-${tagIndex}`}
-                          className="rounded-2xl border border-white/12 bg-white/10 px-3 py-4"
+                          className="rounded-2xl border border-white/12 bg-white/10 px-3 py-3"
                         >
                           <p className="text-[11px] uppercase tracking-[0.16em] text-ivory/58">
                             {label}

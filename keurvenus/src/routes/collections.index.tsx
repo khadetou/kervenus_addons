@@ -1,8 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { CollectionGrid } from "@/components/sections/collection-grid"
+import { seoHead } from "@/lib/seo"
 
 export const Route = createFileRoute("/collections/")({
+  head: () =>
+    seoHead({
+      title: "Collections maison | Kër Venus",
+      description:
+        "Parcourez les collections Kër Venus pour trouver des univers maison prêts à habiter: table, cuisine, verrerie, rangement et décoration.",
+      path: "/collections",
+    }),
   component: CollectionsPage,
 })
 

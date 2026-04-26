@@ -1,8 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { ContactSection } from "@/components/sections/contact-section"
+import { seoHead } from "@/lib/seo"
 
-export const Route = createFileRoute("/contact")({ component: ContactPage })
+export const Route = createFileRoute("/contact")({
+  head: () =>
+    seoHead({
+      title: "Contact | Kër Venus Dakar",
+      description:
+        "Contactez Kër Venus à Dakar pour une commande, un conseil personnalisé ou une question sur la boutique maison.",
+      path: "/contact",
+    }),
+  component: ContactPage,
+})
 
 function ContactPage() {
   return (

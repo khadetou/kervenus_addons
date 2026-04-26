@@ -9,14 +9,17 @@ type ProductPageData = {
   items?: Product[]
 }
 
-export function useProduct(slug: string) {
+export function useProduct(slug: string, initialProduct?: Product | null) {
   const queryClient = useQueryClient()
   const fallbackProduct = products.find((product) => product.slug === slug)
 
   return useQuery({
     queryKey: ["products", slug],
     queryFn: async () => getOdooProductBySlug(slug).catch(() => getProductBySlug(slug)),
-    initialData: () => findCachedProduct(queryClient.getQueriesData({ queryKey: ["products"] }), slug) ?? fallbackProduct,
+    initialData: () =>
+      findCachedProduct(queryClient.getQueriesData({ queryKey: ["products"] }), slug) ??
+      initialProduct ??
+      fallbackProduct,
   })
 }
 

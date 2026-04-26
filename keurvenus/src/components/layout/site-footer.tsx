@@ -45,7 +45,13 @@ export function SiteFooter() {
     <footer className="mt-20 bg-charcoal px-4 py-14 text-ivory">
       <div className="mx-auto grid w-[min(1560px,100%)] gap-10 lg:grid-cols-[1.2fr_2fr]">
         <div>
-          <img src="/LOGO.svg" alt="Kër Venus" className="w-40 invert" />
+          <Link
+            to="/"
+            className="inline-flex rounded-[1.15rem] border border-white/10 bg-ivory px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]"
+            aria-label="Kër Venus accueil"
+          >
+            <img src="/LOGO.svg" alt="Kër Venus" className="h-auto w-40" />
+          </Link>
           <p className="mt-5 max-w-md text-sm leading-7 text-ivory/70">
             Vaisselle, décoration intérieure, linge de maison et bien-être. Une
             signature maison pensée pour sublimer le quotidien avec douceur et
@@ -81,7 +87,7 @@ export function SiteFooter() {
         <Separator className="bg-white/10" />
         <div className="mt-6 flex flex-col gap-3 text-xs text-ivory/55 md:flex-row md:items-center md:justify-between">
           <p>© 2026 Kër Venus. Boutique lifestyle premium.</p>
-          <p>TanStack Start, shadcn/ui, Iconify et GSAP.</p>
+          <p>Dakar, Sénégal · Maison, table et art de vivre.</p>
         </div>
       </div>
     </footer>

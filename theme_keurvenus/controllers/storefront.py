@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import json
 import re
 import unicodedata
 from os import getenv
+from urllib.parse import urlencode
+from xml.sax.saxutils import escape as xml_escape
 
+from markupsafe import Markup
 from werkzeug.exceptions import NotFound
 
 from odoo import fields, http
@@ -18,12 +22,119 @@ STOREFRONT_WRAPPER_URLS = {
     "local": "http://localhost:3000",
     "production": "https://www.keurvenus.sn",
 }
+SEO_STATIC_ROUTES = [
+    ("/", "daily", "1.0"),
+    ("/shop", "daily", "0.9"),
+    ("/collections", "weekly", "0.7"),
+    ("/lookbook", "weekly", "0.6"),
+    ("/about", "monthly", "0.5"),
+    ("/contact", "monthly", "0.5"),
+]
+DEFAULT_SEO_KEYWORDS = [
+    "Kër Venus",
+    "boutique maison Dakar",
+    "vaisselle Dakar",
+    "verrerie Dakar",
+    "cuisine Dakar",
+    "maison Dakar",
+    "décoration intérieure Dakar",
+]
+SEO_CATEGORY_TARGETS = [
+    {
+        "patterns": ["batteries-de-cuisine", "batterie de cuisine", "batteries de cuisine"],
+        "title": "Batteries de cuisine à Dakar | Marmites, casseroles et faitouts Kër Venus",
+        "description": (
+            "Achetez vos batteries de cuisine à Dakar chez Kër Venus: marmites, casseroles, "
+            "faitouts, ustensiles et essentiels de cuisson pour une cuisine élégante."
+        ),
+        "keywords": [
+            "batterie de cuisine Dakar",
+            "batteries de cuisine Dakar",
+            "marmites Dakar",
+            "casseroles Dakar",
+            "faitouts Dakar",
+            "ustensiles de cuisine Dakar",
+        ],
+    },
+    {
+        "patterns": ["verrerie", "verres", "tasses", "carafes"],
+        "title": "Verrerie à Dakar | Verres, tasses et carafes Kër Venus",
+        "description": (
+            "Découvrez la verrerie Kër Venus à Dakar: verres, tasses, carafes, "
+            "pichets et pièces de table pour recevoir avec élégance."
+        ),
+        "keywords": [
+            "verrerie Dakar",
+            "verres Dakar",
+            "tasses Dakar",
+            "carafes Dakar",
+            "pichets Dakar",
+            "art de la table Dakar",
+        ],
+    },
+    {
+        "patterns": ["cuisine-conservation", "conservation", "boites-a-lunch", "glacieres", "isotherme"],
+        "title": "Cuisine et conservation à Dakar | Lunch box, glacières et isothermes",
+        "description": (
+            "Sélection cuisine et conservation à Dakar: boîtes à lunch, glacières, "
+            "contenants isothermes et accessoires pratiques Kër Venus."
+        ),
+        "keywords": [
+            "conservation cuisine Dakar",
+            "lunch box Dakar",
+            "glacières Dakar",
+            "boîtes à lunch Dakar",
+            "isotherme Dakar",
+            "accessoires cuisine Dakar",
+        ],
+    },
+    {
+        "patterns": ["cuisine", "ustensiles", "rangement-organisation"],
+        "title": "Cuisine à Dakar | Accessoires, rangement et ustensiles Kër Venus",
+        "description": (
+            "Équipez votre cuisine à Dakar avec Kër Venus: accessoires de cuisine, "
+            "rangement, organisation, ustensiles et pièces pratiques au style raffiné."
+        ),
+        "keywords": [
+            "cuisine Dakar",
+            "accessoires cuisine Dakar",
+            "ustensiles cuisine Dakar",
+            "rangement cuisine Dakar",
+            "organisation cuisine Dakar",
+            "boutique cuisine Dakar",
+        ],
+    },
+    {
+        "patterns": ["maison", "poubelles", "rangement"],
+        "title": "Maison à Dakar | Décoration, rangement et accessoires Kër Venus",
+        "description": (
+            "Découvrez l’univers maison Kër Venus à Dakar: décoration intérieure, "
+            "rangement, poubelles à pédale et accessoires pour un quotidien plus élégant."
+        ),
+        "keywords": [
+            "maison Dakar",
+            "accessoires maison Dakar",
+            "décoration intérieure Dakar",
+            "rangement maison Dakar",
+            "poubelles à pédale Dakar",
+            "boutique maison Dakar",
+        ],
+    },
+]
 
 
 class KeurVenusWebsite(Website):
     @route()
     def index(self, **kw):
         return storefront_host("/")
+
+    @route()
+    def robots(self, **kwargs):
+        return build_robots_response()
+
+    @route()
+    def sitemap_xml_index(self, **kwargs):
+        return build_sitemap_response()
 
 
 class KeurVenusWebsiteSale(WebsiteSale):
@@ -761,6 +872,102 @@ class KeurVenusStorefrontController(http.Controller):
         }
 
 
+class KeurVenusSeoController(http.Controller):
+    @http.route("/robots.txt", type="http", auth="public", website=True, multilang=False, sitemap=False)
+    def robots(self, **kwargs):
+        return build_robots_response()
+
+    @http.route("/sitemap.xml", type="http", auth="public", website=True, multilang=False, sitemap=False)
+    def sitemap(self, **kwargs):
+        return build_sitemap_response()
+
+    def _build_sitemap(self):
+        urls = []
+        for path, changefreq, priority in SEO_STATIC_ROUTES:
+            urls.append(self._sitemap_entry(path, changefreq=changefreq, priority=priority))
+
+        Product = request.env["product.template"].sudo()
+        product_domain = fields.Domain.AND([
+            request.website.sale_product_domain(),
+            [("type", "!=", "service")],
+        ])
+
+        Category = request.env["product.public.category"].with_context(lang=_lang()).sudo()
+        categories = Category.search(request.website.website_domain(), order="sequence asc, id asc")
+        for category in categories:
+            count = Product.search_count(
+                fields.Domain.AND([product_domain, [("public_categ_ids", "child_of", category.id)]])
+            )
+            if count <= 0:
+                continue
+            path = f"/shop?{urlencode({'category': slugify(category.name, category.id)})}"
+            _title, _description, keywords = category_seo_content(category)
+            urls.append(
+                self._sitemap_entry(
+                    path,
+                    lastmod=category.write_date,
+                    changefreq="weekly",
+                    priority="0.85" if has_target_keyword(keywords) else "0.7",
+                    images=[
+                        absolute_storefront_asset_url(
+                            f"/web/image/product.public.category/{category.id}/image_512"
+                        )
+                    ],
+                )
+            )
+
+        products = Product.with_context(lang=_lang()).search(
+            product_domain,
+            order="website_sequence asc, write_date desc, id desc",
+        )
+        storefront_api = KeurVenusStorefrontController()
+        for product in products:
+            variant = storefront_api._default_variant(product)
+            image_records = storefront_api._product_gallery_records(variant or product)
+            images = [
+                absolute_storefront_asset_url(storefront_api._product_image_url(image_record, "image_1024"))
+                for image_record in image_records[:6]
+            ]
+            urls.append(
+                self._sitemap_entry(
+                    f"/shop/{slugify(product.name, product.id)}",
+                    lastmod=product.write_date,
+                    changefreq="weekly",
+                    priority="0.8",
+                    images=images,
+                )
+            )
+
+        return "\n".join([
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+            'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
+            *urls,
+            "</urlset>",
+            "",
+        ])
+
+    def _sitemap_entry(self, path, lastmod=None, changefreq="weekly", priority="0.5", images=None):
+        parts = [
+            "  <url>",
+            f"    <loc>{xml_escape(absolute_storefront_url(path))}</loc>",
+        ]
+        if lastmod:
+            parts.append(f"    <lastmod>{fields.Date.to_string(lastmod)}</lastmod>")
+        parts.extend([
+            f"    <changefreq>{changefreq}</changefreq>",
+            f"    <priority>{priority}</priority>",
+        ])
+        for image_url in images or []:
+            parts.extend([
+                "    <image:image>",
+                f"      <image:loc>{xml_escape(image_url)}</image:loc>",
+                "    </image:image>",
+            ])
+        parts.append("  </url>")
+        return "\n".join(parts)
+
+
 def slugify(value, record_id):
     normalized = unicodedata.normalize("NFKD", value or "")
     ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
@@ -768,9 +975,46 @@ def slugify(value, record_id):
     return f"{slug or 'produit'}-{record_id}"
 
 
+def build_robots_response():
+    sitemap_url = f"{public_storefront_base_url()}/sitemap.xml"
+    content = "\n".join([
+        "User-agent: *",
+        "Allow: /",
+        "Allow: /odoo/web/image/",
+        "Disallow: /api/",
+        "Disallow: /odoo/",
+        "Disallow: /cart",
+        "Disallow: /checkout",
+        "Disallow: /login",
+        "Disallow: /portal",
+        "Disallow: /wishlist",
+        f"Sitemap: {sitemap_url}",
+        "",
+    ])
+    return request.make_response(
+        content,
+        headers=[
+            ("Content-Type", "text/plain; charset=utf-8"),
+            ("Cache-Control", "public, max-age=3600"),
+        ],
+    )
+
+
+def build_sitemap_response():
+    content = KeurVenusSeoController()._build_sitemap()
+    return request.make_response(
+        content,
+        headers=[
+            ("Content-Type", "application/xml; charset=utf-8"),
+            ("Cache-Control", "public, max-age=3600"),
+        ],
+    )
+
+
 def storefront_host(path="/", main_object=None):
     if not main_object:
         main_object = request.website
+    seo = storefront_seo_values(path, main_object)
     return request.render(
         "theme_keurvenus.storefront_host",
         {
@@ -778,6 +1022,7 @@ def storefront_host(path="/", main_object=None):
             "storefront_path": path,
             "main_object": main_object,
             "seo_object": main_object,
+            **seo,
             "edit_in_backend": bool(
                 main_object
                 and "website_published" in main_object._fields
@@ -812,6 +1057,200 @@ def storefront_base_url():
 
     environment = "local" if is_local_storefront_request() else "production"
     return STOREFRONT_WRAPPER_URLS[environment]
+
+
+def public_storefront_base_url():
+    return (getenv("KEURVENUS_PUBLIC_URL") or STOREFRONT_WRAPPER_URLS["production"]).rstrip("/")
+
+
+def absolute_storefront_url(path="/"):
+    normalized_path = path if path.startswith("/") else f"/{path}"
+    return f"{public_storefront_base_url()}{normalized_path}"
+
+
+def absolute_storefront_asset_url(path=""):
+    if not path:
+        return absolute_storefront_url("/LOGO.svg")
+    if path.startswith(("http://", "https://")):
+        return path
+    if path.startswith("/odoo/"):
+        return absolute_storefront_url(path)
+    if path.startswith("/web/"):
+        return absolute_storefront_url(f"/odoo{path}")
+    return absolute_storefront_url(path)
+
+
+def storefront_seo_values(path, main_object):
+    title = "Kër Venus | Maison, décoration et art de vivre à Dakar"
+    description = (
+        "Boutique Kër Venus à Dakar: vaisselle, verrerie, accessoires de cuisine, "
+        "batteries de cuisine, décoration intérieure et pièces maison."
+    )
+    keywords = list(DEFAULT_SEO_KEYWORDS)
+    image_url = absolute_storefront_url("/LOGO.svg")
+    structured_data = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Kër Venus",
+        "url": public_storefront_base_url(),
+        "logo": image_url,
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Dakar",
+            "addressCountry": "SN",
+        },
+    }
+
+    category = storefront_category_from_path(path)
+    if category:
+        title, description, keywords = category_seo_content(category)
+        image_url = absolute_storefront_asset_url(f"/web/image/product.public.category/{category.id}/image_512")
+        structured_data = collection_page_schema(category.name, description, path)
+    elif (path or "").split("?", 1)[0].rstrip("/") == "/shop":
+        title = "Boutique Kër Venus | Vaisselle, verrerie, cuisine et maison à Dakar"
+        structured_data = collection_page_schema("Boutique Kër Venus", description, "/shop")
+
+    if main_object and main_object._name == "product.template":
+        product = main_object.sudo().with_context(lang=_lang())
+        summary = html2plaintext(
+            product.website_meta_description
+            or product.description_ecommerce
+            or product.description_sale
+            or ""
+        ).strip()
+        description = short_text(summary or f"{product.name}, sélection maison Kër Venus disponible à Dakar.")
+        title = product.website_meta_title or f"{product.name} | Kër Venus"
+        category = KeurVenusStorefrontController()._main_public_category(product)
+        category_name = category.name if category else product.categ_id.name
+        product_keywords = [
+            product.name,
+            f"{product.name} Dakar",
+            f"{category_name} Dakar" if category_name else "",
+            *(product.website_meta_keywords or "").split(","),
+        ]
+        keywords = unique_keywords(product_keywords + DEFAULT_SEO_KEYWORDS)
+        variant = KeurVenusStorefrontController()._default_variant(product)
+        image_url = absolute_storefront_asset_url(
+            KeurVenusStorefrontController()._product_image_url(variant or product, "image_1024")
+        )
+        product_url = absolute_storefront_url(product.website_url or f"/shop/{slugify(product.name, product.id)}")
+        structured_data = {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": product.name,
+            "description": description,
+            "image": [image_url],
+            "brand": {"@type": "Brand", "name": "Kër Venus"},
+            "category": category_name or "",
+            "url": product_url,
+            "offers": {
+                "@type": "Offer",
+                "url": product_url,
+                "priceCurrency": product.currency_id.name or "XOF",
+                "price": float(product.list_price or 0.0),
+                "availability": "https://schema.org/InStock",
+                "itemCondition": "https://schema.org/NewCondition",
+            },
+        }
+
+    return {
+        "seo_title": title,
+        "seo_description": description,
+        "seo_keywords": ", ".join(unique_keywords(keywords)),
+        "seo_canonical_url": absolute_storefront_url(path),
+        "seo_image_url": image_url,
+        "seo_json_ld": Markup(json.dumps(structured_data, ensure_ascii=False)),
+    }
+
+
+def storefront_category_from_path(path):
+    if not (path or "").split("?", 1)[0].rstrip("/") == "/shop":
+        return False
+    slug = request.httprequest.args.get("category")
+    if not slug:
+        return False
+    return KeurVenusStorefrontController()._category_from_slug(slug)
+
+
+def category_seo_content(category):
+    slug = slugify(category.name, category.id)
+    key = f"{category.name} {slug}".lower()
+    target = next(
+        (
+            item
+            for item in SEO_CATEGORY_TARGETS
+            if any(pattern in key for pattern in item["patterns"])
+        ),
+        None,
+    )
+    if target:
+        return target["title"], target["description"], unique_keywords(target["keywords"] + DEFAULT_SEO_KEYWORDS)
+
+    description = short_text(
+        html2plaintext(category.website_description or "").strip()
+        or f"Découvrez la sélection {category.name} Kër Venus à Dakar: maison, cuisine, vaisselle et décoration intérieure."
+    )
+    keywords = unique_keywords([
+        f"{category.name} Dakar",
+        f"acheter {category.name} Dakar",
+        "Kër Venus Dakar",
+        *DEFAULT_SEO_KEYWORDS,
+    ])
+    return f"{category.name} à Dakar | Boutique Kër Venus", description, keywords
+
+
+def collection_page_schema(name, description, path):
+    return {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": name,
+        "description": description,
+        "url": absolute_storefront_url(path),
+        "isPartOf": {
+            "@type": "WebSite",
+            "name": "Kër Venus",
+            "url": public_storefront_base_url(),
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "Kër Venus",
+            "url": public_storefront_base_url(),
+            "logo": absolute_storefront_url("/LOGO.svg"),
+        },
+    }
+
+
+def unique_keywords(values):
+    seen = set()
+    result = []
+    for value in values:
+        value = " ".join((value or "").split())
+        if not value:
+            continue
+        key = value.lower()
+        if key not in seen:
+            seen.add(key)
+            result.append(value)
+    return result
+
+
+def has_target_keyword(keywords):
+    joined = " ".join(keywords).lower()
+    return any(
+        target in joined
+        for target in ("verrerie", "cuisine", "maison", "batterie")
+    )
+
+
+def short_text(value, limit=155):
+    text = " ".join((value or "").split())
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit - 1].strip()}…"
+
+
+def _lang():
+    return request.env.context.get("lang") or request.website.default_lang_id.code or "fr_FR"
 
 
 def is_local_storefront_request():

@@ -10,8 +10,19 @@ import { LookbookSection } from "@/components/sections/lookbook-section"
 import { NewsletterSection } from "@/components/sections/newsletter-section"
 import { ProductCarousel } from "@/components/sections/product-carousel"
 import { ProductStoryBanners } from "@/components/sections/product-story-banners"
+import { organizationStructuredData, seoHead } from "@/lib/seo"
 
-export const Route = createFileRoute("/")({ component: Home })
+export const Route = createFileRoute("/")({
+  head: () =>
+    seoHead({
+      title: "Kër Venus | Maison, décoration et art de vivre à Dakar",
+      description:
+        "Vaisselle, décoration intérieure, linge de maison et objets bien-être sélectionnés par Kër Venus à Dakar.",
+      path: "/",
+      structuredData: organizationStructuredData(),
+    }),
+  component: Home,
+})
 
 function Home() {
   return (

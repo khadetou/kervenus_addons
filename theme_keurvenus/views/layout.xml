@@ -6,8 +6,10 @@
             <link rel="preconnect" href="https://fonts.googleapis.com"/>
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
             <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500&amp;family=Cormorant+Garamond:wght@500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-            <link rel="icon" type="image/svg+xml" href="/theme_keurvenus/static/src/img/keurvenus/logo.svg"/>
             <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer="defer"/>
+        </xpath>
+        <xpath expr="//t[@t-set='x_icon']" position="replace">
+            <t t-set="x_icon" t-value="'/odoo_debranding/favicon'"/>
         </xpath>
         <body position="before">
             <t t-set="body_classname" t-value="'theme-keurvenus' + (' ' + body_classname if body_classname else '')"/>

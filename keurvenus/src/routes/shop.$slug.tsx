@@ -7,13 +7,41 @@ import { RelatedProducts } from "@/components/product/related-products"
 import { ProductVariantSelector } from "@/components/product/product-variant-selector"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useProduct } from "@/hooks/use-product"
+import { getProductBySlug } from "@/data/products"
+import { getOdooProductBySlug } from "@/lib/odoo-api"
 import { useProductVariantSelection } from "@/lib/product-variants"
+import { cleanSeoText, productStructuredData, seoHead } from "@/lib/seo"
 
-export const Route = createFileRoute("/shop/$slug")({ component: ProductPage })
+export const Route = createFileRoute("/shop/$slug")({
+  loader: async ({ params }) =>
+    getOdooProductBySlug(params.slug).catch(() => getProductBySlug(params.slug)),
+  head: ({ loaderData, params }) => {
+    const product = loaderData
+    if (!product) {
+      return seoHead({
+        title: "Produit introuvable | Kër Venus",
+        description: "Ce produit Kër Venus n'est plus disponible dans la boutique.",
+        path: `/shop/${params.slug}`,
+        noindex: true,
+      })
+    }
+
+    return seoHead({
+      title: `${product.name} | Kër Venus`,
+      description: cleanSeoText(product.description || product.shortDescription),
+      path: `/shop/${product.slug}`,
+      image: product.images[0],
+      type: "product",
+      structuredData: productStructuredData(product),
+    })
+  },
+  component: ProductPage,
+})
 
 function ProductPage() {
   const { slug } = Route.useParams()
-  const { data: product, isError, isPending } = useProduct(slug)
+  const loaderProduct = Route.useLoaderData()
+  const { data: product, isError, isPending } = useProduct(slug, loaderProduct)
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" })
