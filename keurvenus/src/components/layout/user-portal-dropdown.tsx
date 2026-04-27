@@ -40,6 +40,8 @@ export function UserPortalDropdown() {
   const { data: session } = useSession()
   const logout = useLogout()
   const isAuthenticated = Boolean(session?.authenticated)
+  const isInternalUser = Boolean(session?.is_internal_user || session?.user?.is_internal_user)
+  const backofficeUrl = session?.backoffice_url || "/odoo"
   const avatarUrl = session?.user?.avatar_url
   const initials = getInitials(session?.user?.name)
   const [avatarFailed, setAvatarFailed] = useState(false)
@@ -114,6 +116,20 @@ export function UserPortalDropdown() {
             </a>
           </DropdownMenuItem>
         ))}
+        {isInternalUser ? (
+          <>
+            <DropdownMenuSeparator className="my-2 bg-charcoal/8" />
+            <DropdownMenuItem asChild className="rounded-xl p-0">
+              <a
+                href={backofficeUrl}
+                className="flex w-full items-center gap-3 rounded-xl bg-champagne px-3 py-2.5 text-sm font-medium text-charcoal transition hover:bg-gold"
+              >
+                <AppIcon icon="solar:widget-4-linear" className="size-4" />
+                Retour au backoffice
+              </a>
+            </DropdownMenuItem>
+          </>
+        ) : null}
         <DropdownMenuSeparator className="my-2 bg-charcoal/8" />
         <DropdownMenuItem
           className="rounded-xl px-3 py-2.5 text-sm text-warm-gray focus:text-charcoal"
