@@ -48,12 +48,12 @@ export function MobileDrawer() {
       <Button
         type="button"
         variant="outline"
-        size="icon-lg"
+        size="icon"
         className="rounded-full border-charcoal/10 bg-white/70 lg:hidden"
         aria-label="Ouvrir le menu"
         onClick={() => setOpen(true)}
       >
-        <AppIcon icon="solar:menu-dots-bold" className="size-5" />
+        <AppIcon icon="solar:menu-dots-bold" className="size-4" />
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent className="w-[92vw] max-w-md border-l border-white/70 bg-ivory p-0">

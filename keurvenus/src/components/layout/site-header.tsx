@@ -59,50 +59,51 @@ export function SiteHeader() {
           </div>
         </div>
 
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 xl:pt-3">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 md:gap-3 xl:pt-3">
           <Link
             to="/"
             className="group flex min-w-0 items-center rounded-full"
             aria-label="Keur Venus accueil"
           >
-            <img src="/LOGO.svg" alt="Keur Venus" className="h-auto w-36 md:w-44 xl:w-48" />
+            <img src="/LOGO.svg" alt="Keur Venus" className="h-auto w-28 sm:w-36 md:w-44 xl:w-48" />
           </Link>
           <DesktopNavigation />
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-1.5 md:gap-2">
             <SearchDialog />
-            <SearchDialog variant="icon" className="md:hidden" />
-            <Button
-              type="button"
-              onClick={openWishlist}
-              variant="outline"
-              size="icon-lg"
-              className="relative rounded-full border-charcoal/10 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition hover:-translate-y-0.5 hover:border-gold/30 hover:bg-white md:hidden"
-              aria-label="Ouvrir les favoris"
-            >
-              <AppIcon icon="solar:heart-linear" className="size-5" />
-              {wishlistCount > 0 && (
+            <SearchDialog variant="icon" className="size-8 md:hidden" />
+            <UserPortalDropdown buttonClassName="size-8 rounded-full border-charcoal/10 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] md:hidden" />
+            {wishlistCount > 0 ? (
+              <Button
+                type="button"
+                onClick={openWishlist}
+                variant="outline"
+                size="icon"
+                className="relative rounded-full border-charcoal/10 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition hover:-translate-y-0.5 hover:border-gold/30 hover:bg-white md:hidden"
+                aria-label="Ouvrir les favoris"
+              >
+                <AppIcon icon="solar:heart-linear" className="size-4" />
                 <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-gold text-[11px] font-bold text-charcoal">
                   {wishlistCount}
                 </span>
-              )}
-            </Button>
+              </Button>
+            ) : null}
             <div className="hidden items-center gap-1 rounded-full border border-charcoal/8 bg-white/54 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.68)] md:flex">
               <UserPortalDropdown />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-lg"
-                className="relative rounded-full text-charcoal transition hover:-translate-y-0.5 hover:bg-white hover:text-gold"
-                aria-label="Favoris"
-                onClick={openWishlist}
-              >
-                <AppIcon icon="solar:heart-linear" className="size-5" />
-                {wishlistCount > 0 && (
+              {wishlistCount > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-lg"
+                  className="relative rounded-full text-charcoal transition hover:-translate-y-0.5 hover:bg-white hover:text-gold"
+                  aria-label="Favoris"
+                  onClick={openWishlist}
+                >
+                  <AppIcon icon="solar:heart-linear" className="size-5" />
                   <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-gold text-[11px] font-bold text-charcoal">
                     {wishlistCount}
                   </span>
-                )}
-              </Button>
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 onClick={openCart}
@@ -123,11 +124,11 @@ export function SiteHeader() {
               type="button"
               onClick={openCart}
               variant="outline"
-              size="icon-lg"
+              size="icon"
               className="relative rounded-full border-charcoal/10 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition hover:-translate-y-0.5 hover:border-gold/30 hover:bg-white md:hidden"
               aria-label="Ouvrir le panier"
             >
-              <AppIcon icon="solar:bag-4-linear" className="size-5" />
+              <AppIcon icon="solar:bag-4-linear" className="size-4" />
               {itemCount > 0 && (
                 <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-gold text-[11px] font-bold text-charcoal">
                   {itemCount}

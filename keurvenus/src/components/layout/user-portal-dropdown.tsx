@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useLogout, useSession } from "@/hooks/use-session"
+import { cn } from "@/lib/utils"
 
 const portalItems = [
   { label: "Mon portail", href: "/portal", icon: "solar:user-rounded-linear" },
@@ -36,7 +37,11 @@ function getInitials(name?: string | null) {
     .toUpperCase()
 }
 
-export function UserPortalDropdown() {
+type UserPortalDropdownProps = {
+  buttonClassName?: string
+}
+
+export function UserPortalDropdown({ buttonClassName }: UserPortalDropdownProps) {
   const { data: session } = useSession()
   const logout = useLogout()
   const isAuthenticated = Boolean(session?.authenticated)
@@ -56,7 +61,10 @@ export function UserPortalDropdown() {
         asChild
         variant="ghost"
         size="icon-lg"
-        className="rounded-full text-charcoal transition hover:-translate-y-0.5 hover:bg-white hover:text-gold"
+        className={cn(
+          "rounded-full text-charcoal transition hover:-translate-y-0.5 hover:bg-white hover:text-gold",
+          buttonClassName
+        )}
         aria-label="Se connecter"
       >
         <a href="/login">
@@ -72,7 +80,10 @@ export function UserPortalDropdown() {
         <Button
           variant="ghost"
           size="icon-lg"
-          className="rounded-full text-charcoal transition hover:-translate-y-0.5 hover:bg-white hover:text-gold"
+          className={cn(
+            "rounded-full text-charcoal transition hover:-translate-y-0.5 hover:bg-white hover:text-gold",
+            buttonClassName
+          )}
           aria-label="Ouvrir le menu client"
         >
           {avatarUrl && !avatarFailed ? (

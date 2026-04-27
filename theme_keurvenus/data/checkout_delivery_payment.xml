@@ -17,4 +17,16 @@
         <field name="is_published" eval="True"/>
         <field name="website_description">&lt;p&gt;Récupérez votre commande en boutique après confirmation de disponibilité.&lt;/p&gt;</field>
     </record>
+
+    <record id="delivery.payment_method_cash_on_delivery" model="payment.method">
+        <field name="name">Paiement comptant à la livraison</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="delivery.payment_provider_cod" model="payment.provider">
+        <field name="name">Paiement comptant à la livraison</field>
+        <field name="state">enabled</field>
+        <field name="is_published" eval="True"/>
+        <field name="payment_method_ids" eval="[(6, 0, [ref('delivery.payment_method_cash_on_delivery')])]"/>
+    </record>
 </odoo>
