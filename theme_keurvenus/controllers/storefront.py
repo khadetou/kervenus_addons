@@ -13,7 +13,10 @@ from werkzeug.exceptions import NotFound
 from odoo import fields, http
 from odoo.exceptions import UserError, ValidationError
 from odoo.http import request, route
-from odoo.tools import escape_psql, html2plaintext
+from odoo.tools import escape_psql, html2plaintext as _html2plaintext
+def html2plaintext(html):
+    if isinstance(html, dict): html = next(iter(html.values())) if html else ""
+    return _html2plaintext(html)
 from odoo.addons.website.controllers.main import Website
 from odoo.addons.website_sale.controllers.main import WebsiteSale
 
@@ -795,7 +798,9 @@ class KeurVenusStorefrontController(http.Controller):
     def _serialize_product(self, product, index=0, featured=False):
         category = self._main_public_category(product)
         variant = self._default_variant(product)
-        summary = html2plaintext(product.description_sale or "").strip()
+        sale_desc = product.description_sale
+        if isinstance(sale_desc, dict): sale_desc = next(iter(sale_desc.values())) if sale_desc else ""
+        summary = html2plaintext(sale_desc or "").strip()
         category_name = category.name if category else (product.categ_id.name or "Maison")
         collection_name = (
             category.parent_id.name
