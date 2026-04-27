@@ -13,6 +13,7 @@ import {
   getOdooCart,
   updateOdooCartLine,
 } from "@/lib/odoo-api"
+import { useSession } from "@/hooks/use-session"
 import type { CartLine, Product } from "@/lib/types"
 
 type CartContextValue = {
@@ -25,6 +26,7 @@ type CartContextValue = {
   increaseQuantity: (productId: string) => void
   decreaseQuantity: (productId: string) => void
   clearCart: () => void
+  refreshCart: () => void
   openCart: () => void
   closeCart: () => void
   setCartOpen: (open: boolean) => void
@@ -35,19 +37,26 @@ const CartContext = createContext<CartContextValue | null>(null)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([])
   const [isCartOpen, setCartOpen] = useState(false)
+  const session = useSession()
+
+  const refreshCart = useCallback(() => {
+    void getOdooCart()
+      .then((cart) => setLines(cart.lines))
+      .catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     let isMounted = true
     void getOdooCart()
       .then((cart) => {
-        if (isMounted && cart.lines.length) setLines(cart.lines)
+        if (isMounted) setLines(cart.lines)
       })
       .catch(() => undefined)
 
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [session.data?.authenticated])
 
   const addProduct = useCallback((product: Product, quantity = 1) => {
     setLines((current) => {
@@ -146,6 +155,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       increaseQuantity,
       decreaseQuantity,
       clearCart,
+      refreshCart,
       openCart,
       closeCart,
       setCartOpen,
@@ -159,6 +169,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     isCartOpen,
     lines,
     openCart,
+    refreshCart,
     removeProduct,
   ])
 

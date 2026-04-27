@@ -163,7 +163,7 @@
                                         </a>
                                         <div>
                                             <h3><a t-att-href="suggested_product.website_url or '/shop'" t-esc="suggested_product.name"/></h3>
-                                            <p t-esc="suggested_product.description_sale and suggested_product.description_sale[:60] or 'Selection maison'"/>
+                                            <p t-esc="website._theme_keurvenus_plaintext(suggested_product.description_sale, 60, 'Selection maison')"/>
                                         </div>
                                         <div class="kv-suggest-price">
                                             <span t-field="suggested_product.list_price" t-options='{"widget": "monetary", "display_currency": website.currency_id}'/>

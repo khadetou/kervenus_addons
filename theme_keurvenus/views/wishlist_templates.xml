@@ -132,7 +132,7 @@
                                 <a class="kv-recent-visual" t-att-href="recent_product.website_url or '/shop'" t-attf-style="background-image:url('#{recent_product.image_1920 and ('/web/image/product.template/%s/image_512' % recent_product.id) or '/theme_keurvenus/static/src/img/keurvenus/wishlist-recent.jpg'}')"/>
                                 <div class="kv-recent-copy">
                                     <h3><a t-att-href="recent_product.website_url or '/shop'" t-esc="recent_product.name"/></h3>
-                                    <p t-esc="recent_product.description_sale and recent_product.description_sale[:65] or 'Selection maison'"/>
+                                    <p t-esc="website._theme_keurvenus_plaintext(recent_product.description_sale, 65, 'Selection maison')"/>
                                 </div>
                                 <div class="kv-recent-price">
                                     <span t-field="recent_product.list_price" t-options='{"widget": "monetary", "display_currency": website.currency_id}'/>

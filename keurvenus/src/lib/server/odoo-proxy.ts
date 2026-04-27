@@ -91,7 +91,7 @@ async function handleStorefrontSessionRequest(request: Request, splat: string) {
 
   if (endpoint === "session/login" && request.method === "POST") {
     const credentials = await request.json().catch(() => ({}))
-    return loginToOdoo(credentials.login, credentials.password)
+    return loginToOdoo(request, credentials.login, credentials.password)
   }
 
   if (endpoint === "session/logout" && request.method === "POST") {
@@ -118,7 +118,7 @@ async function buildSessionResponse(request: Request) {
   )
 }
 
-async function loginToOdoo(login?: string, password?: string) {
+async function loginToOdoo(request: Request, login?: string, password?: string) {
   if (!login || !password) {
     return jsonResponse({ error: "Email et mot de passe requis." }, 400)
   }
@@ -127,7 +127,7 @@ async function loginToOdoo(login?: string, password?: string) {
     db: odooDatabase,
     login,
     password,
-  })
+  }, request)
   const { payload } = response
   const forwardedHeaders = response.headers
   forwardedHeaders.set("content-type", "application/json")

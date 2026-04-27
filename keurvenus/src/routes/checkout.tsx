@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ComponentProps, type ReactNode, useEffect, useState } from "react"
 
@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useCart } from "@/hooks/use-cart"
 import { useSession } from "@/hooks/use-session"
-import { getOdooCheckout, submitOdooCheckout } from "@/lib/odoo-api"
+import { OdooApiError, getOdooCheckout, submitOdooCheckout } from "@/lib/odoo-api"
 import { formatPrice } from "@/lib/format"
 import type {
   CheckoutDeliveryMethod,
@@ -26,11 +27,15 @@ type CheckoutStep = "details" | "options"
 type CustomerDraft = CheckoutSubmitPayload["customer"]
 
 function CheckoutPage() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const session = useSession()
+  const { refreshCart } = useCart()
+  const authenticated = Boolean(session.data?.authenticated)
   const checkout = useQuery({
     queryKey: ["checkout"],
     queryFn: getOdooCheckout,
+    enabled: authenticated,
     retry: false,
   })
   const [deliveryId, setDeliveryId] = useState<number | undefined>()
@@ -69,17 +74,24 @@ function CheckoutPage() {
     mutationFn: submitOdooCheckout,
     onSuccess: (order) => {
       setOrderResult(order)
+      refreshCart()
       queryClient.invalidateQueries({ queryKey: ["cart"] })
       queryClient.invalidateQueries({ queryKey: ["checkout"] })
       queryClient.invalidateQueries({ queryKey: ["portal"] })
     },
   })
 
-  const cart = checkout.data?.cart
-  const hasItems = Boolean(cart?.lines.length)
-  const authenticated = Boolean(session.data?.authenticated || checkout.data?.authenticated)
-  const requiresAccount =
-    (checkout.data?.settings?.account_on_checkout || checkout.data?.account_on_checkout) === "mandatory"
+  useEffect(() => {
+    if (session.isFetched && !authenticated) {
+      navigate({ to: "/login", search: { redirect: "/checkout" } as never, replace: true })
+    }
+  }, [authenticated, navigate, session.isFetched])
+
+  useEffect(() => {
+    if (checkout.error instanceof OdooApiError && checkout.error.status === 401) {
+      navigate({ to: "/login", search: { redirect: "/checkout" } as never, replace: true })
+    }
+  }, [checkout.error, navigate])
 
   const handleSubmit: FormSubmitHandler = (event) => {
     event.preventDefault()
@@ -102,10 +114,16 @@ function CheckoutPage() {
     return <OrderCreated order={orderResult} />
   }
 
-  if (checkout.data && requiresAccount && !authenticated) {
-    return <AccountRequired />
+  if (session.isLoading) {
+    return <AuthRedirecting />
   }
 
+  if (!authenticated) {
+    return <AuthRedirecting />
+  }
+
+  const cart = checkout.data?.cart
+  const hasItems = Boolean(cart?.lines.length)
   const currentStepIndex = step === "details" ? 1 : 2
 
   return (
@@ -119,9 +137,7 @@ function CheckoutPage() {
             </h1>
             <p className="mt-4 max-w-2xl text-warm-gray">
               {step === "details"
-                ? checkout.data?.settings?.guest_checkout
-                  ? "Votre backoffice autorise le paiement en invité. Vous pouvez continuer sans créer de compte."
-                  : "Confirmez vos coordonnées avant de choisir la livraison et le paiement."
+                ? "Confirmez vos coordonnées avant de choisir la livraison et le paiement."
                 : "Les livraisons, retraits et paiements affichés viennent directement du backoffice Odoo."}
             </p>
           </div>
@@ -220,7 +236,7 @@ function CheckoutPage() {
           </form>
         )}
       </section>
-      <CheckoutSummary />
+      <CheckoutSummary checkout={checkout.data} />
     </main>
   )
 }
@@ -536,13 +552,8 @@ function PaymentOption({
   )
 }
 
-function CheckoutSummary() {
-  const checkout = useQuery({
-    queryKey: ["checkout"],
-    queryFn: getOdooCheckout,
-    retry: false,
-  })
-  const cart = checkout.data?.cart
+function CheckoutSummary({ checkout }: { checkout?: CheckoutState }) {
+  const cart = checkout?.cart
 
   if (!cart?.lines.length) return <OrderSummary checkoutCta={false} />
 
@@ -588,16 +599,17 @@ function SummaryRow({ label, value, strong }: { label: string; value: string; st
   )
 }
 
-function AccountRequired() {
+function AuthRedirecting() {
   return (
     <main className="mx-auto mt-10 grid w-[min(1180px,calc(100vw-32px))] gap-6 lg:grid-cols-[1fr_360px]">
       <section className="rounded-[2.3rem] border border-white/75 bg-white/72 p-8 shadow-luxury">
-        <p className="text-xs uppercase tracking-[0.24em] text-gold">compte client requis</p>
+        <p className="text-xs uppercase tracking-[0.24em] text-gold">connexion requise</p>
         <h1 className="mt-4 font-serif text-5xl leading-none md:text-7xl">
-          Connectez-vous pour commander.
+          Connectez-vous pour finaliser la commande.
         </h1>
         <p className="mt-4 max-w-2xl text-warm-gray">
-          La commande, le bon de commande et la facture non payée seront liés à votre espace client Kër Venus.
+          Vous allez être redirigé vers l'accès client. Après connexion ou création de compte,
+          vous reviendrez automatiquement au checkout.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild className="h-12 rounded-full bg-charcoal px-7 text-ivory">
@@ -607,7 +619,7 @@ function AccountRequired() {
             </Link>
           </Button>
           <Button asChild variant="outline" className="h-12 rounded-full border-charcoal/10 bg-white px-7">
-            <a href="/odoo/web/signup?redirect=/checkout">Créer un compte</a>
+            <Link to="/register" search={{ redirect: "/checkout" } as never}>Créer un compte</Link>
           </Button>
         </div>
       </section>

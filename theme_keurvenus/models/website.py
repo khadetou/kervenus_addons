@@ -33,6 +33,22 @@ KV_PRODUCT_FALLBACK_IMAGES = (
 class Website(models.Model):
     _inherit = "website"
 
+    def _theme_keurvenus_text(self, value, fallback=""):
+        if isinstance(value, dict):
+            lang = self.env.context.get("lang") or self.env.user.lang or "en_US"
+            value = value.get(lang) or value.get(lang.replace("_", "-")) or next((item for item in value.values() if item), "")
+        if value in (False, None):
+            return fallback
+        return str(value)
+
+    def _theme_keurvenus_plaintext(self, value, limit=False, fallback=""):
+        text = html2plaintext(self._theme_keurvenus_text(value)).strip()
+        if not text:
+            text = fallback
+        if limit and len(text) > limit:
+            return text[:limit].rstrip()
+        return text
+
     theme_keurvenus_pagination_type = fields.Selection(
         [
             ("pagination", "Pagination normale"),
@@ -71,7 +87,7 @@ class Website(models.Model):
                 if product.image_1920
                 else KV_PRODUCT_FALLBACK_IMAGES[index % len(KV_PRODUCT_FALLBACK_IMAGES)]
             )
-            summary = html2plaintext(product.description_sale or "").strip()
+            summary = self._theme_keurvenus_plaintext(product.description_sale)
             product_cards.append({
                 "product": product,
                 "category": category,

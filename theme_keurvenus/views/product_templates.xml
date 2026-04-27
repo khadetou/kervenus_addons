@@ -252,7 +252,7 @@
                             </div>
                             <div>
                                 <h4><a t-att-href="related_product.website_url or '/shop'" t-esc="related_product.name"/></h4>
-                                <p t-esc="related_product.description_sale and related_product.description_sale[:80] or 'Piece complementaire pour la maison'"/>
+                                <p t-esc="website._theme_keurvenus_plaintext(related_product.description_sale, 80, 'Piece complementaire pour la maison')"/>
                             </div>
                             <div class="kv-related-price">
                                 <span t-field="related_product.list_price" t-options='{"widget": "monetary", "display_currency": website.currency_id}'/>

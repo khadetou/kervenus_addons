@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -13,6 +14,7 @@ import {
   getOdooWishlist,
   removeOdooWishlistItem,
 } from "@/lib/odoo-api"
+import { useSession } from "@/hooks/use-session"
 import type { Product } from "@/lib/types"
 
 type WishlistContextValue = {
@@ -36,6 +38,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([])
   const [isWishlistOpen, setWishlistOpen] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
+  const session = useSession()
+  const syncedUserRef = useRef<number | null>(null)
 
   useEffect(() => {
     try {
@@ -52,10 +56,39 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
     void getOdooWishlist()
       .then((items) => {
-        if (items.length) setProducts(items)
+        if (items.length) setProducts((current) => mergeProducts(current, items))
       })
       .catch(() => undefined)
   }, [])
+
+  useEffect(() => {
+    if (!session.data?.authenticated) {
+      syncedUserRef.current = null
+      return
+    }
+    if (!isHydrated) return
+    const userId = session.data.user?.id || 0
+    if (syncedUserRef.current === userId) return
+    syncedUserRef.current = userId
+
+    const localProducts = products
+    void Promise.all(
+      localProducts
+        .filter((product) => product.variantId)
+        .map((product) => addOdooWishlistItem(product).catch(() => null))
+    )
+      .then((savedItems) => {
+        const savedProducts = savedItems.filter(Boolean) as Product[]
+        if (savedProducts.length) {
+          setProducts((current) => mergeProducts(current, savedProducts))
+        }
+        return getOdooWishlist()
+      })
+      .then((items) => {
+        setProducts((current) => mergeProducts(current, items))
+      })
+      .catch(() => undefined)
+  }, [isHydrated, products, session.data?.authenticated, session.data?.user?.id])
 
   useEffect(() => {
     if (!isHydrated) return
@@ -141,6 +174,20 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   )
 
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>
+}
+
+function mergeProducts(current: Product[], incoming: Product[]) {
+  const productsById = new Map<string, Product>()
+  for (const product of current) {
+    productsById.set(product.id, product)
+  }
+  for (const product of incoming) {
+    productsById.set(product.id, {
+      ...productsById.get(product.id),
+      ...product,
+    })
+  }
+  return Array.from(productsById.values())
 }
 
 export function useWishlist() {

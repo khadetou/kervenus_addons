@@ -14,9 +14,19 @@ from odoo import fields, http
 from odoo.exceptions import UserError, ValidationError
 from odoo.http import request, route
 from odoo.tools import escape_psql, html2plaintext as _html2plaintext
+
+
+def localized_text(value, fallback=""):
+    if isinstance(value, dict):
+        lang = getattr(request, "env", None) and (request.env.context.get("lang") or request.env.user.lang)
+        value = value.get(lang) or value.get((lang or "").replace("_", "-")) or next((item for item in value.values() if item), "")
+    if value in (False, None):
+        return fallback
+    return str(value)
+
+
 def html2plaintext(html):
-    if isinstance(html, dict): html = next(iter(html.values())) if html else ""
-    return _html2plaintext(html)
+    return _html2plaintext(localized_text(html))
 from odoo.addons.website.controllers.main import Website
 from odoo.addons.website_sale.controllers.main import WebsiteSale
 
@@ -193,6 +203,8 @@ class KeurVenusStorefrontPages(http.Controller):
     )
     def storefront_page(self, **kwargs):
         path = request.httprequest.full_path.rstrip("?")
+        if path.partition("?")[0] == "/checkout" and request.env.user._is_public():
+            return request.redirect(storefront_auth_url("/login", path or "/checkout"))
         return storefront_host(path or "/", storefront_main_object_for_path(path or "/"))
 
 
@@ -610,6 +622,7 @@ class KeurVenusStorefrontController(http.Controller):
         methods=["GET"],
         website=True,
         csrf=False,
+        save_session=True,
     )
     def cart(self, **kwargs):
         return self._json({"cart": self._serialize_cart(request.cart)})
@@ -621,6 +634,7 @@ class KeurVenusStorefrontController(http.Controller):
         methods=["POST"],
         website=True,
         csrf=False,
+        save_session=True,
     )
     def cart_add(self, **kwargs):
         payload = self._json_payload()
@@ -635,6 +649,7 @@ class KeurVenusStorefrontController(http.Controller):
             product_id=product.id,
             quantity=quantity,
         )
+        self._save_storefront_session()
         return self._json({"cart": self._serialize_cart(order)})
 
     @http.route(
@@ -644,6 +659,7 @@ class KeurVenusStorefrontController(http.Controller):
         methods=["POST"],
         website=True,
         csrf=False,
+        save_session=True,
     )
     def cart_update(self, **kwargs):
         payload = self._json_payload()
@@ -654,7 +670,94 @@ class KeurVenusStorefrontController(http.Controller):
         quantity = int(payload.get("quantity") or 0)
         if line_id:
             order._cart_update_line_quantity(line_id, quantity)
+            self._save_storefront_session()
         return self._json({"cart": self._serialize_cart(order)})
+
+    @http.route(
+        "/api/keurvenus/storefront/wishlist",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+        save_session=True,
+    )
+    def wishlist(self, **kwargs):
+        return self._json({
+            "items": [
+                self._serialize_wishlist_item(wish, index)
+                for index, wish in enumerate(self._current_wishlist_items())
+            ],
+        })
+
+    @http.route(
+        "/api/keurvenus/storefront/wishlist/add",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+        save_session=True,
+    )
+    def wishlist_add(self, **kwargs):
+        if "product.wishlist" not in request.env:
+            return self._json({"error": "La wishlist n'est pas disponible."}, status=404)
+
+        payload = self._json_payload()
+        product_id = int(payload.get("product_id") or 0)
+        product = request.env["product.product"].sudo().browse(product_id).exists()
+        if not product:
+            return self._json({"error": "Produit introuvable."}, status=404)
+
+        wish = self._find_wishlist_item(product)
+        if not wish:
+            Wishlist = request.env["product.wishlist"].sudo() if request.website.is_public_user() else request.env["product.wishlist"]
+            partner_id = False if request.website.is_public_user() else request.env.user.partner_id.id
+            price = product._get_combination_info_variant().get("price", product.lst_price)
+            wish = Wishlist._add_to_wishlist(
+                request.pricelist.id,
+                request.website.currency_id.id,
+                request.website.id,
+                price,
+                product.id,
+                partner_id,
+            )
+            if not partner_id:
+                request.session["wishlist_ids"] = request.session.get("wishlist_ids", []) + [wish.id]
+            self._save_storefront_session()
+
+        return self._json({"item": self._serialize_wishlist_item(wish, 0)})
+
+    @http.route(
+        "/api/keurvenus/storefront/wishlist/remove",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+        save_session=True,
+    )
+    def wishlist_remove(self, **kwargs):
+        if "product.wishlist" not in request.env:
+            return self._json({"ok": True})
+
+        payload = self._json_payload()
+        wish_id = int(payload.get("wish_id") or 0)
+        if request.website.is_public_user():
+            wish = request.env["product.wishlist"].sudo().browse(wish_id).exists()
+            wish_ids = request.session.get("wishlist_ids") or []
+            if wish and wish.id in wish_ids:
+                request.session["wishlist_ids"].remove(wish.id)
+                self._save_storefront_session()
+                wish.sudo().unlink()
+        else:
+            wish = request.env["product.wishlist"].search([
+                ("id", "=", wish_id),
+                ("partner_id", "=", request.env.user.partner_id.id),
+            ], limit=1)
+            if wish:
+                wish.unlink()
+        return self._json({"ok": True})
 
     @http.route(
         "/api/keurvenus/storefront/checkout",
@@ -665,14 +768,21 @@ class KeurVenusStorefrontController(http.Controller):
         csrf=False,
     )
     def checkout(self, **kwargs):
+        if request.env.user._is_public():
+            return self._json({
+                "error": "Veuillez vous connecter ou creer un compte pour finaliser votre commande.",
+                "login_url": storefront_auth_url("/login", "/checkout"),
+                "signup_url": storefront_auth_url("/register", "/checkout"),
+            }, status=401)
+
         order = request.cart
         if order:
             order = self._prepare_checkout_order(order)
         return self._json({
             "checkout": {
                 "authenticated": not request.env.user._is_public(),
-                "login_url": "/login?redirect=/checkout",
-                "signup_url": "/register?redirect=/checkout",
+                "login_url": storefront_auth_url("/login", "/checkout"),
+                "signup_url": storefront_auth_url("/register", "/checkout"),
                 "cart": self._serialize_cart(order),
                 "delivery_methods": self._serialize_delivery_methods(order),
                 "payment_methods": self._serialize_payment_methods(order),
@@ -693,11 +803,11 @@ class KeurVenusStorefrontController(http.Controller):
         csrf=False,
     )
     def checkout_submit(self, **kwargs):
-        if request.env.user._is_public() and request.website.account_on_checkout == "mandatory":
+        if request.env.user._is_public():
             return self._json({
-                "error": "Veuillez créer un compte ou vous connecter pour commander.",
-                "login_url": "/login?redirect=/checkout",
-                "signup_url": "/register?redirect=/checkout",
+                "error": "Veuillez vous connecter ou creer un compte pour commander.",
+                "login_url": storefront_auth_url("/login", "/checkout"),
+                "signup_url": storefront_auth_url("/register", "/checkout"),
             }, status=401)
 
         order = request.cart
@@ -718,6 +828,8 @@ class KeurVenusStorefrontController(http.Controller):
             invoices = self._create_unpaid_invoices(order)
             request.session["sale_last_order_id"] = order.id
             request.website.sale_reset()
+            request.cart = request.env["sale.order"].sudo()
+            self._save_storefront_session()
         except (UserError, ValidationError) as exc:
             return self._json({"error": str(exc)}, status=400)
 
@@ -798,8 +910,7 @@ class KeurVenusStorefrontController(http.Controller):
     def _serialize_product(self, product, index=0, featured=False):
         category = self._main_public_category(product)
         variant = self._default_variant(product)
-        sale_desc = product.description_sale
-        if isinstance(sale_desc, dict): sale_desc = next(iter(sale_desc.values())) if sale_desc else ""
+        sale_desc = localized_text(product.description_sale)
         summary = html2plaintext(sale_desc or "").strip()
         category_name = category.name if category else (product.categ_id.name or "Maison")
         collection_name = (
@@ -815,7 +926,7 @@ class KeurVenusStorefrontController(http.Controller):
             "slug": slugify(product.name, product.id),
             "name": product.name,
             "subtitle": category_name,
-            "description": product.description_sale or "",
+            "description": sale_desc,
             "description_plain": summary or category_name,
             "price": {
                 "amount": float(product.list_price or 0.0),
@@ -1077,6 +1188,11 @@ class KeurVenusStorefrontController(http.Controller):
         except ValueError:
             return {}
 
+    def _save_storefront_session(self):
+        request.session.can_save = True
+        request.session.touch()
+        request._save_session()
+
     def _serialize_cart(self, order):
         currency = order.currency_id if order else request.website.currency_id
         if not order:
@@ -1126,6 +1242,45 @@ class KeurVenusStorefrontController(http.Controller):
             "amount_total_formatted": self._format_money(order.amount_total, currency),
             "currency": self._currency(currency),
         }
+
+    def _current_wishlist_items(self):
+        if "product.wishlist" not in request.env:
+            return []
+        return request.env["product.wishlist"].with_context(display_default_code=False).current()
+
+    def _find_wishlist_item(self, product):
+        Wishlist = request.env["product.wishlist"].sudo()
+        domain = [
+            ("product_id", "=", product.id),
+            ("website_id", "=", request.website.id),
+        ]
+        if request.website.is_public_user():
+            wish_ids = request.session.get("wishlist_ids") or []
+            if not wish_ids:
+                return Wishlist.browse()
+            domain.append(("id", "in", wish_ids))
+        else:
+            domain.append(("partner_id", "=", request.env.user.partner_id.id))
+        return Wishlist.search(domain, limit=1)
+
+    def _serialize_wishlist_item(self, wish, index=0):
+        wish = wish.sudo()
+        product = wish.product_id
+        template = product.product_tmpl_id
+        item = self._serialize_product(template, index)
+        item.update({
+            "wish_id": wish.id,
+            "in_wishlist": True,
+            "product_id": product.id,
+            "variant_id": product.id,
+            "template_id": template.id,
+            "price": {
+                "amount": float(wish.price or product.lst_price or template.list_price or 0.0),
+                "currency": self._currency(wish.currency_id or request.website.currency_id),
+            },
+            "image_url": self._product_image_url(product, "image_512"),
+        })
+        return item
 
     def _format_money(self, amount, currency):
         return request.env["ir.qweb.field.monetary"].value_to_html(
@@ -2026,6 +2181,12 @@ def storefront_url(path="/"):
     base_url = storefront_base_url()
     normalized_path = path if path.startswith("/") else f"/{path}"
     return f"{base_url.rstrip('/')}{normalized_path}"
+
+
+def storefront_auth_url(path="/login", redirect="/checkout"):
+    normalized_path = path if path.startswith("/") else f"/{path}"
+    normalized_redirect = redirect if redirect.startswith("/") else f"/{redirect}"
+    return f"{normalized_path}?{urlencode({'redirect': normalized_redirect})}"
 
 
 def storefront_base_url():
