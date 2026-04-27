@@ -1,5 +1,8 @@
 from odoo import api, fields, models
-from odoo.tools import html2plaintext
+from odoo.tools import html2plaintext as _html2plaintext
+def html2plaintext(html):
+    if isinstance(html, dict): html = next(iter(html.values())) if html else ""
+    return _html2plaintext(html)
 
 
 THEME_KEURVENUS_HOMEPAGE_ARCH = """
