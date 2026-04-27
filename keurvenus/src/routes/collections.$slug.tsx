@@ -1,17 +1,42 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { ProductCard } from "@/components/product/product-card"
+import { getCollectionBySlug } from "@/data/collections"
 import { useCollection } from "@/hooks/use-collections"
 import { useProducts } from "@/hooks/use-products"
 import { categoryImageFor, categoryImagePosition } from "@/lib/category-media"
+import { getOdooCollectionBySlug } from "@/lib/odoo-api"
+import { applySeoMetadata, categorySeoFor, seoHead } from "@/lib/seo"
 
 export const Route = createFileRoute("/collections/$slug")({
+  loader: async ({ params }) =>
+    getOdooCollectionBySlug(params.slug).catch(() => getCollectionBySlug(params.slug)),
+  head: ({ loaderData, params }) => {
+    if (!loaderData) {
+      return seoHead({
+        title: "Collection introuvable | Kër Venus",
+        description: "Cette collection Kër Venus n'est plus disponible.",
+        path: `/collections/${params.slug}`,
+        noindex: true,
+      })
+    }
+    const seo = categorySeoFor(loaderData)
+    return seoHead(applySeoMetadata({
+      title: seo.title,
+      description: seo.description,
+      path: `/collections/${loaderData.slug}`,
+      image: seo.image || loaderData.image,
+      keywords: seo.keywords,
+      structuredData: seo.structuredData,
+    }, loaderData.seo))
+  },
   component: CollectionPage,
 })
 
 function CollectionPage() {
   const { slug } = Route.useParams()
-  const { data: collection } = useCollection(slug)
+  const loaderCollection = Route.useLoaderData()
+  const { data: collection = loaderCollection } = useCollection(slug)
   const { data: products = [] } = useProducts({
     category: collection?.slug,
     pageSize: 96,

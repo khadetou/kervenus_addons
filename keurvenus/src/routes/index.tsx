@@ -10,17 +10,20 @@ import { LookbookSection } from "@/components/sections/lookbook-section"
 import { NewsletterSection } from "@/components/sections/newsletter-section"
 import { ProductCarousel } from "@/components/sections/product-carousel"
 import { ProductStoryBanners } from "@/components/sections/product-story-banners"
-import { organizationStructuredData, seoHead } from "@/lib/seo"
+import { getOdooSeo } from "@/lib/odoo-api"
+import { applySeoMetadata, organizationStructuredData, seoHead } from "@/lib/seo"
 
 export const Route = createFileRoute("/")({
-  head: () =>
-    seoHead({
+  loader: async () => getOdooSeo("/").catch(() => undefined),
+  head: ({ loaderData }) =>
+    seoHead(applySeoMetadata({
       title: "Kër Venus | Maison, décoration et art de vivre à Dakar",
       description:
         "Vaisselle, décoration intérieure, linge de maison et objets bien-être sélectionnés par Kër Venus à Dakar.",
       path: "/",
+      image: "/assets/landing/banner-art-table.png",
       structuredData: organizationStructuredData(),
-    }),
+    }, loaderData)),
   component: Home,
 })
 

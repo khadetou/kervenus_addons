@@ -16,13 +16,13 @@ export function DesktopNavigation() {
   const { data: navigation = [] } = useNavigation()
 
   return (
-    <NavigationMenu className="hidden min-w-0 justify-center lg:flex">
-      <NavigationMenuList className="gap-1 rounded-full border border-charcoal/8 bg-white/58 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.7)]">
+    <NavigationMenu className="hidden min-w-0 max-w-full justify-center overflow-visible lg:flex">
+      <NavigationMenuList className="max-w-full gap-0.5 rounded-full border border-charcoal/8 bg-white/58 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.7)] 2xl:gap-1">
         {navigation.map((item) => (
           <NavigationMenuItem key={item.href}>
             {item.children ? (
               <>
-                <NavigationMenuTrigger className="h-10 rounded-full bg-transparent px-4 text-sm font-medium text-warm-gray transition hover:bg-white hover:text-charcoal data-open:bg-white data-open:text-charcoal data-open:shadow-soft xl:px-5">
+                <NavigationMenuTrigger className="h-10 whitespace-nowrap rounded-full bg-transparent px-3 text-sm font-medium text-warm-gray transition hover:bg-white hover:text-charcoal data-open:bg-white data-open:text-charcoal data-open:shadow-soft 2xl:px-5">
                   {item.label}
                 </NavigationMenuTrigger>
                 <NavigationMenuContent className="rounded-[1.65rem] border border-white/80 bg-ivory/96 p-3 shadow-luxury backdrop-blur-2xl">
@@ -143,7 +143,7 @@ export function DesktopNavigation() {
               <NavigationMenuLink asChild>
                 <Link
                   to={item.href}
-                  className="inline-flex h-10 items-center rounded-full px-4 text-sm font-medium text-warm-gray transition hover:bg-white hover:text-charcoal hover:shadow-soft xl:px-5"
+                  className="inline-flex h-10 items-center whitespace-nowrap rounded-full px-3 text-sm font-medium text-warm-gray transition hover:bg-white hover:text-charcoal hover:shadow-soft 2xl:px-5"
                 >
                   {item.label}
                 </Link>

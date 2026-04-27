@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useLogin, useSession } from "@/hooks/use-session"
+import { getOdooResetPasswordUrl, getOdooSignupUrl } from "@/lib/odoo-api"
 
 export const Route = createFileRoute("/login")({ component: LoginPage })
 
@@ -17,6 +18,12 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const { data: session } = useSession()
   const login = useLogin()
+  const redirectTo =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("redirect") || "/portal"
+      : "/portal"
+  const signupUrl = getOdooSignupUrl(redirectTo)
+  const resetPasswordUrl = getOdooResetPasswordUrl(redirectTo)
 
   const handleSubmit: FormSubmitHandler = (event) => {
     event.preventDefault()
@@ -28,7 +35,11 @@ function LoginPage() {
       },
       {
         onSuccess: () => {
-          navigate({ to: "/portal" })
+          if (redirectTo === "/portal") {
+            navigate({ to: "/portal" })
+          } else {
+            window.location.href = redirectTo
+          }
         },
       }
     )
@@ -48,8 +59,8 @@ function LoginPage() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild className="h-12 rounded-full bg-charcoal px-7 text-ivory">
-              <Link to="/portal">
-                Ouvrir le portail
+              <Link to={redirectTo === "/checkout" ? "/checkout" : "/portal"}>
+                {redirectTo === "/checkout" ? "Continuer la commande" : "Ouvrir le portail"}
                 <AppIcon icon="solar:arrow-right-linear" className="size-4" />
               </Link>
             </Button>
@@ -141,6 +152,22 @@ function LoginPage() {
                   </button>
                 </div>
               </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <a
+                  href={resetPasswordUrl}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-warm-gray transition hover:text-charcoal"
+                >
+                  <AppIcon icon="solar:restart-circle-linear" className="size-4 text-gold" />
+                  Mot de passe oublié ?
+                </a>
+                <a
+                  href={signupUrl}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-charcoal transition hover:text-gold"
+                >
+                  Créer un compte
+                  <AppIcon icon="solar:user-plus-rounded-linear" className="size-4" />
+                </a>
+              </div>
               <Button
                 type="submit"
                 className="h-12 rounded-full bg-charcoal text-ivory hover:bg-charcoal/90"
@@ -181,9 +208,21 @@ function LoginPage() {
             Parcours boutique fluide.
           </span>
         </div>
-        <Button asChild variant="outline" className="mt-8 h-12 rounded-full border-white/20 bg-white/10 text-ivory hover:bg-white/15">
-          <Link to="/contact">Besoin d’un accès ?</Link>
-        </Button>
+        <div className="mt-8 grid gap-3">
+          <Button asChild className="h-12 rounded-full bg-champagne text-charcoal hover:bg-gold">
+            <a href={signupUrl}>
+              Créer un compte
+              <AppIcon icon="solar:arrow-right-linear" className="size-4" />
+            </a>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="h-12 rounded-full border-white/20 bg-white/10 text-ivory hover:bg-white/15"
+          >
+            <a href={resetPasswordUrl}>Mot de passe oublié</a>
+          </Button>
+        </div>
       </aside>
     </main>
   )

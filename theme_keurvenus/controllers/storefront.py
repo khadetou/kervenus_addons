@@ -4,13 +4,14 @@ import json
 import re
 import unicodedata
 from os import getenv
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode
 from xml.sax.saxutils import escape as xml_escape
 
 from markupsafe import Markup
 from werkzeug.exceptions import NotFound
 
 from odoo import fields, http
+from odoo.exceptions import UserError, ValidationError
 from odoo.http import request, route
 from odoo.tools import escape_psql, html2plaintext
 from odoo.addons.website.controllers.main import Website
@@ -126,7 +127,7 @@ SEO_CATEGORY_TARGETS = [
 class KeurVenusWebsite(Website):
     @route()
     def index(self, **kw):
-        return storefront_host("/")
+        return storefront_host("/", storefront_main_object_for_path("/"))
 
     @route()
     def robots(self, **kwargs):
@@ -141,7 +142,7 @@ class KeurVenusWebsiteSale(WebsiteSale):
     @route()
     def shop(self, page=0, category=None, search="", min_price=0.0, max_price=0.0, tags="", **post):
         path = request.httprequest.full_path.rstrip("?")
-        return storefront_host(path or "/shop")
+        return storefront_host(path or "/shop", storefront_main_object_for_path(path or "/shop"))
 
     @route()
     def product(self, product, category=None, pricelist=None, **kwargs):
@@ -172,6 +173,14 @@ class KeurVenusStorefrontPages(http.Controller):
             "/login",
             "/lookbook",
             "/portal",
+            "/portal/invoices",
+            "/portal/invoices/<int:document_id>",
+            "/portal/orders",
+            "/portal/orders/<int:document_id>",
+            "/portal/quotes",
+            "/portal/quotes/<int:document_id>",
+            "/register",
+            "/reset-password",
             "/wishlist",
         ],
         type="http",
@@ -181,7 +190,7 @@ class KeurVenusStorefrontPages(http.Controller):
     )
     def storefront_page(self, **kwargs):
         path = request.httprequest.full_path.rstrip("?")
-        return storefront_host(path or "/")
+        return storefront_host(path or "/", storefront_main_object_for_path(path or "/"))
 
 
 class KeurVenusStorefrontController(http.Controller):
@@ -329,6 +338,392 @@ class KeurVenusStorefrontController(http.Controller):
         })
 
     @http.route(
+        "/api/keurvenus/storefront/seo",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def seo(self, path="/", **kwargs):
+        path = path or "/"
+        main_object = storefront_main_object_for_path(path)
+        return self._json({"seo": seo_payload(path, main_object)})
+
+    @http.route(
+        "/api/keurvenus/storefront/auth/signup",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+    )
+    def auth_signup(self, **kwargs):
+        payload = self._json_payload()
+        name = " ".join((payload.get("name") or "").split())
+        login = " ".join((payload.get("login") or payload.get("email") or "").split()).lower()
+        password = payload.get("password") or ""
+        confirm_password = payload.get("confirm_password") or ""
+
+        if request.env["res.users"].sudo()._get_signup_invitation_scope() != "b2c":
+            return self._json({"error": "La creation de compte public n'est pas activee."}, status=403)
+        if not name or not login or not password:
+            return self._json({"error": "Nom, e-mail et mot de passe sont requis."}, status=400)
+        if password != confirm_password:
+            return self._json({"error": "Les mots de passe ne correspondent pas."}, status=400)
+        if len(password.strip()) < 8:
+            return self._json({"error": "Le mot de passe doit contenir au moins 8 caracteres."}, status=400)
+
+        try:
+            login, password = request.env["res.users"].sudo().signup({
+                "name": name,
+                "login": login,
+                "email": login,
+                "password": password,
+            })
+            credential = {"login": login, "password": password, "type": "password"}
+            request.session.authenticate(request.env, credential)
+            request.env.cr.commit()
+        except Exception as exc:
+            message = str(exc)
+            if request.env["res.users"].sudo().with_context(active_test=False).search_count([("login", "=", login)], limit=1):
+                message = "Un compte existe deja avec cette adresse e-mail."
+            return self._json({"error": message or "Impossible de creer le compte."}, status=400)
+
+        return self._json({"ok": True, "redirect_url": payload.get("redirect") or "/portal"})
+
+    @http.route(
+        "/api/keurvenus/storefront/auth/reset-password",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+    )
+    def auth_reset_password(self, **kwargs):
+        payload = self._json_payload()
+        login = " ".join((payload.get("login") or payload.get("email") or "").split()).lower()
+        if not login:
+            return self._json({"error": "Adresse e-mail requise."}, status=400)
+
+        reset_enabled = request.env["ir.config_parameter"].sudo().get_param("auth_signup.reset_password") == "True"
+        if not reset_enabled:
+            return self._json({"error": "La reinitialisation du mot de passe n'est pas activee."}, status=403)
+
+        try:
+            request.env["res.users"].sudo().reset_password(login)
+        except UserError as exc:
+            return self._json({"error": str(exc)}, status=400)
+        except Exception as exc:
+            if "No account found" not in str(exc):
+                return self._json({"error": str(exc) or "Impossible d'envoyer l'e-mail de reinitialisation."}, status=400)
+
+        return self._json({
+            "ok": True,
+            "message": "Si un compte existe pour cette adresse, un lien de reinitialisation a ete envoye.",
+        })
+
+    @http.route(
+        "/api/keurvenus/storefront/auth/reset-password/confirm",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+    )
+    def auth_reset_password_confirm(self, **kwargs):
+        payload = self._json_payload()
+        token = payload.get("token") or ""
+        password = payload.get("password") or ""
+        confirm_password = payload.get("confirm_password") or ""
+        if not token:
+            return self._json({"error": "Le lien de reinitialisation est invalide."}, status=400)
+        if password != confirm_password:
+            return self._json({"error": "Les mots de passe ne correspondent pas."}, status=400)
+        if len(password.strip()) < 8:
+            return self._json({"error": "Le mot de passe doit contenir au moins 8 caracteres."}, status=400)
+
+        try:
+            request.env["res.users"].sudo().signup({"password": password}, token)
+            request.env.cr.commit()
+        except Exception as exc:
+            return self._json({"error": str(exc) or "Impossible de mettre a jour le mot de passe."}, status=400)
+
+        return self._json({"ok": True, "message": "Votre mot de passe a ete reinitialise."})
+
+    @http.route(
+        "/api/keurvenus/storefront/portal",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def portal_dashboard(self, **kwargs):
+        if request.env.user._is_public():
+            return self._json({"error": "Veuillez vous connecter."}, status=401)
+
+        partner = self._portal_partner()
+        quotes = self._portal_sale_orders(partner, ("draft", "sent"), limit=6)
+        orders = self._portal_sale_orders(partner, ("sale", "done"), limit=6)
+        invoices = self._portal_invoices(partner, limit=6)
+        overdue_domain = fields.Domain.AND([
+            self._portal_invoice_domain(partner),
+            [
+                ("invoice_date_due", "<", fields.Date.today()),
+                ("payment_state", "not in", ("paid", "in_payment")),
+            ],
+        ])
+
+        return self._json({
+            "session": self._serialize_portal_session(partner),
+            "profile": {
+                "name": request.env.user.name,
+                "login": request.env.user.login,
+                "partner": self._serialize_partner(partner),
+            },
+            "counters": {
+                "quotes": request.env["sale.order"].sudo().search_count(self._portal_sale_order_domain(partner, ("draft", "sent"))),
+                "orders": request.env["sale.order"].sudo().search_count(self._portal_sale_order_domain(partner, ("sale", "done"))),
+                "invoices": request.env["account.move"].sudo().search_count(self._portal_invoice_domain(partner)),
+                "overdue_invoices": request.env["account.move"].sudo().search_count(overdue_domain),
+                "wishlist": self._portal_wishlist_count(partner),
+                "addresses": request.env["res.partner"].sudo().search_count([("id", "child_of", partner.commercial_partner_id.id)]),
+            },
+            "recent_quotes": [self._serialize_sale_document(order, "quote") for order in quotes],
+            "recent_orders": [self._serialize_sale_document(order, "order") for order in orders],
+            "recent_invoices": [self._serialize_invoice_document(invoice) for invoice in invoices],
+        })
+
+    @http.route(
+        "/api/keurvenus/storefront/portal/orders",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def portal_orders(self, page=1, page_size=12, **kwargs):
+        if request.env.user._is_public():
+            return self._json({"error": "Veuillez vous connecter."}, status=401)
+        partner = self._portal_partner()
+        orders = self._portal_sale_orders(partner, ("sale", "done"), page=page, page_size=page_size)
+        return self._json({"items": [self._serialize_sale_document(order, "order") for order in orders]})
+
+    @http.route(
+        "/api/keurvenus/storefront/portal/orders/<int:order_id>",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def portal_order_detail(self, order_id, **kwargs):
+        if request.env.user._is_public():
+            return self._json({"error": "Veuillez vous connecter."}, status=401)
+        partner = self._portal_partner()
+        order = request.env["sale.order"].sudo().search(
+            fields.Domain.AND([self._portal_sale_order_domain(partner, ("sale", "done")), [("id", "=", order_id)]]),
+            limit=1,
+        )
+        if not order:
+            return self._json({"error": "Commande introuvable."}, status=404)
+        return self._json({"item": self._serialize_sale_document(order, "order", detailed=True)})
+
+    @http.route(
+        "/api/keurvenus/storefront/portal/quotes",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def portal_quotes(self, page=1, page_size=12, **kwargs):
+        if request.env.user._is_public():
+            return self._json({"error": "Veuillez vous connecter."}, status=401)
+        partner = self._portal_partner()
+        quotes = self._portal_sale_orders(partner, ("draft", "sent"), page=page, page_size=page_size)
+        return self._json({"items": [self._serialize_sale_document(order, "quote") for order in quotes]})
+
+    @http.route(
+        "/api/keurvenus/storefront/portal/quotes/<int:order_id>",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def portal_quote_detail(self, order_id, **kwargs):
+        if request.env.user._is_public():
+            return self._json({"error": "Veuillez vous connecter."}, status=401)
+        partner = self._portal_partner()
+        order = request.env["sale.order"].sudo().search(
+            fields.Domain.AND([self._portal_sale_order_domain(partner, ("draft", "sent")), [("id", "=", order_id)]]),
+            limit=1,
+        )
+        if not order:
+            return self._json({"error": "Devis introuvable."}, status=404)
+        return self._json({"item": self._serialize_sale_document(order, "quote", detailed=True)})
+
+    @http.route(
+        "/api/keurvenus/storefront/portal/invoices",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def portal_invoices(self, page=1, page_size=12, **kwargs):
+        if request.env.user._is_public():
+            return self._json({"error": "Veuillez vous connecter."}, status=401)
+        partner = self._portal_partner()
+        invoices = self._portal_invoices(partner, page=page, page_size=page_size)
+        return self._json({"items": [self._serialize_invoice_document(invoice) for invoice in invoices]})
+
+    @http.route(
+        "/api/keurvenus/storefront/portal/invoices/<int:invoice_id>",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def portal_invoice_detail(self, invoice_id, **kwargs):
+        if request.env.user._is_public():
+            return self._json({"error": "Veuillez vous connecter."}, status=401)
+        partner = self._portal_partner()
+        invoice = request.env["account.move"].sudo().search(
+            fields.Domain.AND([self._portal_invoice_domain(partner), [("id", "=", invoice_id)]]),
+            limit=1,
+        )
+        if not invoice:
+            return self._json({"error": "Facture introuvable."}, status=404)
+        return self._json({"item": self._serialize_invoice_document(invoice, detailed=True)})
+
+    @http.route(
+        "/api/keurvenus/storefront/cart",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def cart(self, **kwargs):
+        return self._json({"cart": self._serialize_cart(request.cart)})
+
+    @http.route(
+        "/api/keurvenus/storefront/cart/add",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+    )
+    def cart_add(self, **kwargs):
+        payload = self._json_payload()
+        product_id = int(payload.get("product_id") or 0)
+        product_template_id = int(payload.get("product_template_id") or 0)
+        quantity = int(payload.get("quantity") or 1)
+        order = request.cart or request.website._create_cart()
+        product = request.env["product.product"].sudo().browse(product_id).exists()
+        if not product:
+            return self._json({"error": "Produit introuvable."}, status=404)
+        order.with_context(skip_cart_verification=True)._cart_add(
+            product_id=product.id,
+            quantity=quantity,
+        )
+        return self._json({"cart": self._serialize_cart(order)})
+
+    @http.route(
+        "/api/keurvenus/storefront/cart/update",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+    )
+    def cart_update(self, **kwargs):
+        payload = self._json_payload()
+        order = request.cart
+        if not order:
+            return self._json({"cart": self._serialize_cart(False)})
+        line_id = int(payload.get("line_id") or 0)
+        quantity = int(payload.get("quantity") or 0)
+        if line_id:
+            order._cart_update_line_quantity(line_id, quantity)
+        return self._json({"cart": self._serialize_cart(order)})
+
+    @http.route(
+        "/api/keurvenus/storefront/checkout",
+        type="http",
+        auth="public",
+        methods=["GET"],
+        website=True,
+        csrf=False,
+    )
+    def checkout(self, **kwargs):
+        order = request.cart
+        if order:
+            order = self._prepare_checkout_order(order)
+        return self._json({
+            "checkout": {
+                "authenticated": not request.env.user._is_public(),
+                "login_url": "/login?redirect=/checkout",
+                "signup_url": "/register?redirect=/checkout",
+                "cart": self._serialize_cart(order),
+                "delivery_methods": self._serialize_delivery_methods(order),
+                "payment_methods": self._serialize_payment_methods(order),
+                "coming_soon_payment_methods": self._coming_soon_payment_methods(order),
+                "settings": self._checkout_settings(order),
+                "selected_delivery_method_id": order.carrier_id.id if order and order.carrier_id else False,
+                "selected_payment_method_id": False,
+                "account_on_checkout": request.website.account_on_checkout,
+            },
+        })
+
+    @http.route(
+        "/api/keurvenus/storefront/checkout/submit",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+    )
+    def checkout_submit(self, **kwargs):
+        if request.env.user._is_public() and request.website.account_on_checkout == "mandatory":
+            return self._json({
+                "error": "Veuillez créer un compte ou vous connecter pour commander.",
+                "login_url": "/login?redirect=/checkout",
+                "signup_url": "/register?redirect=/checkout",
+            }, status=401)
+
+        order = request.cart
+        if not order or not order.order_line:
+            return self._json({"error": "Votre panier est vide."}, status=400)
+
+        payload = self._json_payload()
+        try:
+            order = self._prepare_checkout_order(order)
+            self._update_checkout_partner(payload.get("customer") or {}, order)
+            self._apply_delivery_method(order, payload.get("delivery_method_id"))
+            payment_method = self._payment_method_from_payload(order, payload.get("payment_method_id"))
+            order._recompute_cart()
+            order._check_cart_is_ready_to_be_paid()
+            self._annotate_order_payment_choice(order, payment_method)
+            if order.state in ("draft", "sent"):
+                order._validate_order()
+            invoices = self._create_unpaid_invoices(order)
+            request.session["sale_last_order_id"] = order.id
+            request.website.sale_reset()
+        except (UserError, ValidationError) as exc:
+            return self._json({"error": str(exc)}, status=400)
+
+        invoice = invoices[:1]
+        return self._json({
+            "order": self._serialize_order_result(order, invoice, payment_method),
+        })
+
+    @http.route(
         "/api/keurvenus/storefront/categories",
         type="http",
         auth="public",
@@ -461,6 +856,7 @@ class KeurVenusStorefrontController(http.Controller):
                 {"id": tag.id, "name": tag.name, "slug": slugify(tag.name, tag.id)}
                 for tag in product.product_tag_ids.filtered(lambda tag: tag.visible_to_customers)
             ],
+            "seo": seo_payload(f"/shop/{slugify(product.name, product.id)}", product),
         }
 
     def _default_variant(self, product):
@@ -659,6 +1055,7 @@ class KeurVenusStorefrontController(http.Controller):
             "sequence": category.sequence,
             "depth": max(len(parent_path) - 1, 0),
             "website_url": f"/shop/category/{slugify(category.name, category.id)}",
+            "seo": seo_payload(f"/shop?{urlencode({'category': slugify(category.name, category.id)})}", category),
         }
 
     def _currency(self, currency):
@@ -667,6 +1064,580 @@ class KeurVenusStorefrontController(http.Controller):
             "name": currency.name,
             "symbol": currency.symbol,
             "position": currency.position,
+        }
+
+    def _json_payload(self):
+        try:
+            return request.get_json_data() or {}
+        except ValueError:
+            return {}
+
+    def _serialize_cart(self, order):
+        currency = order.currency_id if order else request.website.currency_id
+        if not order:
+            return {
+                "id": False,
+                "lines": [],
+                "items_count": 0,
+                "amount_untaxed": 0,
+                "amount_delivery": 0,
+                "amount_tax": 0,
+                "amount_total": 0,
+                "currency": self._currency(currency),
+            }
+        lines = []
+        for line in order.website_order_line:
+            if line.is_delivery:
+                continue
+            product = line.product_id
+            template = product.product_tmpl_id
+            values = product.product_template_attribute_value_ids.sorted(
+                lambda value: (value.attribute_id.sequence, value.id)
+            )
+            lines.append({
+                "id": line.id,
+                "product_id": product.id,
+                "template_id": template.id,
+                "slug": slugify(template.name, template.id),
+                "name": template.name,
+                "variant_values": [value.name for value in values],
+                "quantity": line.product_uom_qty,
+                "price_unit": line.price_unit,
+                "price_subtotal": line.price_subtotal,
+                "image_url": self._product_image_url(product, "image_512"),
+            })
+        return {
+            "id": order.id,
+            "name": order.name,
+            "lines": lines,
+            "items_count": int(order.cart_quantity),
+            "amount_untaxed": float(order.amount_untaxed),
+            "amount_delivery": float(order.amount_delivery),
+            "amount_tax": float(order.amount_tax),
+            "amount_total": float(order.amount_total),
+            "amount_untaxed_formatted": self._format_money(order.amount_untaxed, currency),
+            "amount_delivery_formatted": self._format_money(order.amount_delivery, currency),
+            "amount_tax_formatted": self._format_money(order.amount_tax, currency),
+            "amount_total_formatted": self._format_money(order.amount_total, currency),
+            "currency": self._currency(currency),
+        }
+
+    def _format_money(self, amount, currency):
+        return request.env["ir.qweb.field.monetary"].value_to_html(
+            amount,
+            {"display_currency": currency},
+        )
+
+    def _format_money_text(self, amount, currency):
+        return html2plaintext(str(self._format_money(amount, currency))).strip()
+
+    def _portal_partner(self):
+        return request.env.user.sudo().partner_id.commercial_partner_id
+
+    def _portal_sale_order_domain(self, partner, states):
+        return [
+            ("partner_id", "child_of", partner.id),
+            ("state", "in", tuple(states)),
+        ]
+
+    def _portal_invoice_domain(self, partner):
+        return [
+            ("commercial_partner_id", "=", partner.id),
+            ("move_type", "in", ("out_invoice", "out_refund")),
+            ("state", "!=", "cancel"),
+        ]
+
+    def _portal_sale_orders(self, partner, states, page=1, page_size=12, limit=False):
+        page = max(int(page or 1), 1)
+        page_size = min(max(int(page_size or 12), 1), 50)
+        return request.env["sale.order"].sudo().search(
+            self._portal_sale_order_domain(partner, states),
+            order="date_order desc, id desc",
+            limit=limit or page_size,
+            offset=0 if limit else (page - 1) * page_size,
+        )
+
+    def _portal_invoices(self, partner, page=1, page_size=12, limit=False):
+        page = max(int(page or 1), 1)
+        page_size = min(max(int(page_size or 12), 1), 50)
+        return request.env["account.move"].sudo().search(
+            self._portal_invoice_domain(partner),
+            order="invoice_date desc, date desc, id desc",
+            limit=limit or page_size,
+            offset=0 if limit else (page - 1) * page_size,
+        )
+
+    def _portal_wishlist_count(self, partner):
+        if "product.wishlist" not in request.env:
+            return 0
+        return request.env["product.wishlist"].sudo().search_count([
+            ("partner_id", "=", partner.id),
+        ])
+
+    def _serialize_portal_session(self, partner):
+        return {
+            "authenticated": True,
+            "user": {
+                "id": request.env.user.id,
+                "name": request.env.user.name,
+                "login": request.env.user.login,
+                "is_internal_user": request.env.user._is_internal(),
+                "partner": self._serialize_partner(partner),
+            },
+            "cart_count": int(request.cart.cart_quantity) if request.cart else 0,
+            "wishlist_count": self._portal_wishlist_count(partner),
+            "payment_url": "/checkout",
+            "portal_url": "/portal",
+            "portal_links": [],
+            "odoo_base_url": request.httprequest.host_url.rstrip("/"),
+            "backoffice_url": backoffice_url("/odoo"),
+            "signup_enabled": True,
+            "is_internal_user": request.env.user._is_internal(),
+        }
+
+    def _serialize_partner(self, partner):
+        return {
+            "id": partner.id,
+            "name": partner.name,
+            "email": partner.email or "",
+            "phone": partner.phone or getattr(partner, "mobile", "") or "",
+            "street": partner.street or "",
+            "street2": partner.street2 or "",
+            "zip": partner.zip or "",
+            "city": partner.city or "",
+            "state_id": partner.state_id.id if partner.state_id else False,
+            "country_id": partner.country_id.id if partner.country_id else False,
+            "country_name": partner.country_id.name if partner.country_id else "",
+        }
+
+    def _serialize_sale_document(self, order, document_type, detailed=False):
+        order._portal_ensure_token()
+        storefront_path = f"/portal/{'quotes' if document_type == 'quote' else 'orders'}/{order.id}"
+        invoices = order.invoice_ids.filtered(lambda move: move.move_type in ("out_invoice", "out_refund") and move.state != "cancel")
+        pickings = order.picking_ids.filtered(lambda picking: picking.state != "cancel") if hasattr(order, "picking_ids") else request.env["stock.picking"]
+        return {
+            "id": order.id,
+            "name": order.name,
+            "date": fields.Date.to_string(order.date_order.date()) if order.date_order else False,
+            "date_order": fields.Date.to_string(order.date_order.date()) if order.date_order else False,
+            "state": order.state,
+            "amount_total": float(order.amount_total),
+            "amount_total_formatted": self._format_money_text(order.amount_total, order.currency_id),
+            "amount_due": float(sum(invoices.mapped("amount_residual"))) if invoices else 0.0,
+            "amount_due_formatted": self._format_money_text(sum(invoices.mapped("amount_residual")), order.currency_id) if invoices else self._format_money_text(0, order.currency_id),
+            "href": storefront_path,
+            "odoo_portal_url": f"/odoo/my/orders/{order.id}?access_token={order.access_token}",
+            "preview_url": self._portal_preview_url(order),
+            "download_url": self._portal_download_url(order),
+            "payment_reference": order.client_order_ref or order.payment_term_id.name or "",
+            "invoice_status": order.invoice_status or "",
+            "delivery_status": self._sale_delivery_status(pickings),
+            "salesperson": self._serialize_user(order.user_id),
+            "partner": self._serialize_partner(order.partner_id.commercial_partner_id),
+            "invoice_partner": self._serialize_partner(order.partner_invoice_id),
+            "shipping_partner": self._serialize_partner(order.partner_shipping_id),
+            "delivery": {
+                "carrier": order.carrier_id.name if order.carrier_id else "",
+                "amount": float(order.amount_delivery or 0.0),
+                "amount_formatted": self._format_money_text(order.amount_delivery, order.currency_id),
+            },
+            "amount_untaxed": float(order.amount_untaxed),
+            "amount_tax": float(order.amount_tax),
+            "amount_untaxed_formatted": self._format_money_text(order.amount_untaxed, order.currency_id),
+            "amount_tax_formatted": self._format_money_text(order.amount_tax, order.currency_id),
+            "lines": [
+                self._serialize_sale_document_line(line, order.currency_id)
+                for line in order.order_line
+                if line.display_type not in ("line_section", "line_note", "payment_term")
+            ],
+            "related_invoices": [self._serialize_related_invoice(invoice) for invoice in invoices],
+            "shipments": [self._serialize_shipment(picking) for picking in pickings],
+            "type": document_type,
+            "detailed": detailed,
+        }
+
+    def _serialize_sale_document_line(self, line, currency):
+        product = line.product_id
+        template = product.product_tmpl_id if product else False
+        return {
+            "id": line.id,
+            "name": line.name,
+            "quantity": float(line.product_uom_qty),
+            "price_unit": float(line.price_unit),
+            "subtotal": float(line.price_subtotal),
+            "price_unit_formatted": self._format_money_text(line.price_unit, currency),
+            "subtotal_formatted": self._format_money_text(line.price_subtotal, currency),
+            "product_id": product.id if product else False,
+            "template_id": template.id if template else False,
+            "slug": slugify(template.name, template.id) if template else "",
+            "image_url": self._product_image_url(product, "image_256") if product and product.image_1920 else "",
+        }
+
+    def _serialize_invoice_document(self, invoice, detailed=False):
+        invoice._portal_ensure_token()
+        storefront_path = f"/portal/invoices/{invoice.id}"
+        sale_orders = invoice.line_ids.sale_line_ids.order_id
+        return {
+            "id": invoice.id,
+            "name": invoice.name,
+            "date": fields.Date.to_string(invoice.date) if invoice.date else False,
+            "invoice_date": fields.Date.to_string(invoice.invoice_date) if invoice.invoice_date else False,
+            "due_date": fields.Date.to_string(invoice.invoice_date_due) if invoice.invoice_date_due else False,
+            "state": invoice.state,
+            "payment_state": invoice.payment_state,
+            "amount_total": float(invoice.amount_total),
+            "amount_total_formatted": self._format_money_text(invoice.amount_total, invoice.currency_id),
+            "amount_due": float(invoice.amount_residual),
+            "amount_due_formatted": self._format_money_text(invoice.amount_residual, invoice.currency_id),
+            "href": storefront_path,
+            "odoo_portal_url": f"/odoo/my/invoices/{invoice.id}?access_token={invoice.access_token}",
+            "preview_url": self._portal_preview_url(invoice),
+            "download_url": self._portal_download_url(invoice),
+            "payment_reference": invoice.payment_reference or invoice.ref or invoice.invoice_origin or "",
+            "invoice_origin": invoice.invoice_origin or "",
+            "salesperson": self._serialize_user(invoice.invoice_user_id),
+            "partner": self._serialize_partner(invoice.commercial_partner_id),
+            "invoice_partner": self._serialize_partner(invoice.partner_id),
+            "amount_untaxed": float(invoice.amount_untaxed),
+            "amount_tax": float(invoice.amount_tax),
+            "amount_untaxed_formatted": self._format_money_text(invoice.amount_untaxed, invoice.currency_id),
+            "amount_tax_formatted": self._format_money_text(invoice.amount_tax, invoice.currency_id),
+            "lines": [
+                self._serialize_invoice_document_line(line, invoice.currency_id)
+                for line in invoice.invoice_line_ids
+                if line.display_type not in ("line_section", "line_note", "payment_term")
+            ],
+            "related_orders": [self._serialize_related_order(order) for order in sale_orders],
+            "detailed": detailed,
+        }
+
+    def _serialize_invoice_document_line(self, line, currency):
+        product = line.product_id
+        template = product.product_tmpl_id if product else False
+        return {
+            "id": line.id,
+            "name": line.name,
+            "quantity": float(line.quantity),
+            "price_unit": float(line.price_unit),
+            "subtotal": float(line.price_subtotal),
+            "price_unit_formatted": self._format_money_text(line.price_unit, currency),
+            "subtotal_formatted": self._format_money_text(line.price_subtotal, currency),
+            "product_id": product.id if product else False,
+            "template_id": template.id if template else False,
+            "slug": slugify(template.name, template.id) if template else "",
+            "image_url": self._product_image_url(product, "image_256") if product and product.image_1920 else "",
+        }
+
+    def _serialize_user(self, user):
+        if not user:
+            return {"id": False, "name": "", "email": "", "phone": ""}
+        partner = user.partner_id
+        return {
+            "id": user.id,
+            "name": user.name or "",
+            "email": user.login or partner.email or "",
+            "phone": partner.phone or partner.mobile or "",
+        }
+
+    def _serialize_related_invoice(self, invoice):
+        invoice._portal_ensure_token()
+        return {
+            "id": invoice.id,
+            "name": invoice.name,
+            "date": fields.Date.to_string(invoice.invoice_date) if invoice.invoice_date else False,
+            "state": invoice.state,
+            "payment_state": invoice.payment_state,
+            "amount_total_formatted": self._format_money_text(invoice.amount_total, invoice.currency_id),
+            "amount_due_formatted": self._format_money_text(invoice.amount_residual, invoice.currency_id),
+            "href": f"/portal/invoices/{invoice.id}",
+            "download_url": self._portal_download_url(invoice),
+        }
+
+    def _serialize_related_order(self, order):
+        order._portal_ensure_token()
+        document_type = "quote" if order.state in ("draft", "sent") else "order"
+        return {
+            "id": order.id,
+            "name": order.name,
+            "date": fields.Date.to_string(order.date_order.date()) if order.date_order else False,
+            "state": order.state,
+            "amount_total_formatted": self._format_money_text(order.amount_total, order.currency_id),
+            "href": f"/portal/{'quotes' if document_type == 'quote' else 'orders'}/{order.id}",
+            "type": document_type,
+        }
+
+    def _serialize_shipment(self, picking):
+        return {
+            "id": picking.id,
+            "name": picking.name,
+            "state": picking.state,
+            "state_label": dict(picking._fields["state"].selection).get(picking.state, picking.state),
+            "scheduled_date": fields.Date.to_string(picking.scheduled_date.date()) if picking.scheduled_date else False,
+            "date_done": fields.Date.to_string(picking.date_done.date()) if picking.date_done else False,
+        }
+
+    def _sale_delivery_status(self, pickings):
+        if not pickings:
+            return {"state": "none", "label": "Non livré"}
+        states = set(pickings.mapped("state"))
+        if states <= {"done"}:
+            return {"state": "done", "label": "Livré"}
+        if "assigned" in states:
+            return {"state": "assigned", "label": "Prêt"}
+        if "confirmed" in states or "waiting" in states:
+            return {"state": "preparation", "label": "Préparation"}
+        return {"state": ",".join(sorted(states)), "label": "Non livré"}
+
+    def _portal_download_url(self, record):
+        try:
+            return record.get_portal_url(report_type="pdf", download=True)
+        except Exception:
+            return ""
+
+    def _portal_preview_url(self, record):
+        try:
+            return record.get_portal_url(report_type="pdf", download=False)
+        except Exception:
+            return ""
+
+    def _prepare_checkout_order(self, order):
+        order = order.sudo().with_context(lang=self._lang(), website_id=request.website.id)
+        if order.partner_id == request.website.user_id.sudo().partner_id and not request.env.user._is_public():
+            partner = request.env.user.partner_id.sudo()
+            order.write({
+                "partner_id": partner.id,
+                "partner_invoice_id": partner.id,
+                "partner_shipping_id": partner.id,
+            })
+        if order._has_deliverable_products():
+            delivery_methods = order._get_delivery_methods()
+            if delivery_method := order._get_preferred_delivery_method(delivery_methods):
+                if not order.carrier_id or order.carrier_id not in delivery_methods:
+                    order._set_delivery_method(delivery_method)
+        order._recompute_cart()
+        return order
+
+    def _serialize_delivery_methods(self, order):
+        if not order or not order._has_deliverable_products():
+            return []
+        methods = []
+        for carrier in order._get_delivery_methods():
+            rate = carrier.rate_shipment(order)
+            price = float(rate.get("price") or 0.0) if rate.get("success") else 0.0
+            methods.append({
+                "id": carrier.id,
+                "name": carrier.name,
+                "description": html2plaintext(carrier.website_description or carrier.carrier_description or "").strip(),
+                "price": price,
+                "price_formatted": self._format_money(price, order.currency_id),
+                "selected": carrier == order.carrier_id,
+                "is_pickup": any(word in carrier.name.lower() for word in ("retrait", "pickup", "magasin", "boutique")),
+                "allows_cash_on_delivery": bool(carrier.allow_cash_on_delivery),
+                "invoice_policy": carrier.invoice_policy,
+                "available": bool(rate.get("success")),
+                "message": rate.get("error_message") or "",
+            })
+        return methods
+
+    def _serialize_payment_methods(self, order):
+        if not order:
+            return []
+        providers = request.env["payment.provider"].sudo()._get_compatible_providers(
+            order.company_id.id,
+            order.partner_invoice_id.id,
+            order.amount_total,
+            currency_id=order.currency_id.id,
+            sale_order_id=order.id,
+        )
+        methods = request.env["payment.method"].sudo()._get_compatible_payment_methods(
+            providers.ids,
+            order.partner_invoice_id.id,
+            currency_id=order.currency_id.id,
+        )
+        items = []
+        for provider in providers:
+            provider_methods = methods.filtered(lambda method: provider.id in method.provider_ids.ids)
+            provider_method_records = provider_methods or provider.payment_method_ids
+            if not provider_method_records:
+                items.append({
+                    "id": f"{provider.id}:0",
+                    "provider_id": provider.id,
+                    "provider_name": provider.name,
+                    "provider_code": provider.code,
+                    "method_id": False,
+                    "name": provider.name,
+                    "code": provider.code,
+                    "flow": "offline" if provider.code == "custom" else "redirect",
+                    "available": True,
+                })
+                continue
+            for method in provider_method_records:
+                items.append({
+                    "id": f"{provider.id}:{method.id}",
+                    "provider_id": provider.id,
+                    "provider_name": provider.name,
+                    "provider_code": provider.code,
+                    "method_id": method.id,
+                    "name": method.name,
+                    "code": method.code,
+                    "flow": "offline" if provider.code == "custom" else "redirect",
+                    "available": True,
+                })
+        return items
+
+    def _checkout_settings(self, order):
+        website = request.website
+        default_invoice_policy = (
+            request.env["ir.default"].sudo()._get(
+                "product.template",
+                "invoice_policy",
+                company_id=order.company_id.id if order else request.env.company.id,
+            )
+            or "order"
+        )
+        order_lines_invoice_on_order = True
+        if order and order.website_order_line:
+            product_lines = order.website_order_line.filtered(lambda line: not line.is_delivery)
+            order_lines_invoice_on_order = all(
+                line.product_id.invoice_policy == "order" for line in product_lines
+            )
+        invoice_on_confirmation = default_invoice_policy == "order" and order_lines_invoice_on_order
+        return {
+            "account_on_checkout": website.account_on_checkout,
+            "guest_checkout": website.account_on_checkout in ("optional", "disabled"),
+            "ecommerce_access": website.ecommerce_access,
+            "add_to_cart_action": website.add_to_cart_action,
+            "show_line_subtotals_tax_selection": website.show_line_subtotals_tax_selection,
+            "invoice_policy": default_invoice_policy,
+            "invoice_on_confirmation": invoice_on_confirmation,
+            "automatic_invoice": bool(
+                request.env["ir.config_parameter"].sudo().get_param("sale.automatic_invoice")
+            ),
+            "portal_payment_enabled": bool(
+                request.env["ir.config_parameter"].sudo().get_param("account_payment.enable_portal_payment")
+            ),
+            "order_lines_invoice_on_order": order_lines_invoice_on_order,
+        }
+
+    def _coming_soon_payment_methods(self, order):
+        active_names = " ".join(
+            f"{item['provider_name']} {item['name']}".lower()
+            for item in self._serialize_payment_methods(order)
+        )
+        soon = []
+        for label, icon in (("Orange Money", "orange-money"), ("Wave", "wave")):
+            if label.lower().split()[0] not in active_names:
+                soon.append({"id": icon, "name": label, "available": False, "label": "Bientôt"})
+        return soon
+
+    def _update_checkout_partner(self, values, order):
+        name = " ".join(
+            part for part in [values.get("first_name"), values.get("last_name")] if part
+        ).strip() or values.get("name")
+        email = (values.get("email") or "").strip()
+        phone = (values.get("phone") or "").strip()
+        street = (values.get("street") or values.get("address") or "").strip()
+        city = (values.get("city") or "").strip()
+        if not name:
+            raise ValidationError("Veuillez renseigner le nom du client.")
+        if not email:
+            raise ValidationError("Veuillez renseigner l'adresse e-mail du client.")
+        if not phone:
+            raise ValidationError("Veuillez renseigner le téléphone du client.")
+        if not street and order._has_deliverable_products():
+            raise ValidationError("Veuillez renseigner l'adresse de livraison.")
+
+        if request.env.user._is_public():
+            Partner = request.env["res.partner"].sudo()
+            partner = Partner.search([("email", "=", email)], limit=1)
+            if not partner or partner == request.website.user_id.sudo().partner_id:
+                partner = Partner.create({
+                    "name": name,
+                    "email": email,
+                    "phone": phone,
+                    "street": street,
+                    "city": city,
+                    "company_id": order.company_id.id,
+                })
+        else:
+            partner = request.env.user.partner_id.sudo()
+        name = " ".join(
+            part for part in [values.get("first_name"), values.get("last_name")] if part
+        ).strip() or values.get("name") or partner.name
+        write_values = {
+            "name": name,
+            "email": email or partner.email,
+            "phone": phone or partner.phone,
+            "street": street or partner.street,
+            "city": city or partner.city,
+        }
+        partner.write({key: value for key, value in write_values.items() if value})
+        order.write({
+            "partner_id": partner.id,
+            "partner_invoice_id": partner.id,
+            "partner_shipping_id": partner.id,
+        })
+
+    def _apply_delivery_method(self, order, delivery_method_id):
+        if not order._has_deliverable_products():
+            return
+        delivery_method_id = int(delivery_method_id or 0)
+        available = order._get_delivery_methods()
+        carrier = available.filtered(lambda item: item.id == delivery_method_id)[:1]
+        if not carrier:
+            carrier = order._get_preferred_delivery_method(available)
+        if not carrier:
+            raise ValidationError("Aucune méthode de livraison disponible.")
+        order._set_delivery_method(carrier)
+
+    def _payment_method_from_payload(self, order, raw_payment_method_id):
+        payment_methods = self._serialize_payment_methods(order)
+        payment_method = next(
+            (item for item in payment_methods if item["id"] == str(raw_payment_method_id)),
+            None,
+        )
+        if not payment_method and payment_methods:
+            payment_method = payment_methods[0]
+        if not payment_method:
+            raise ValidationError("Aucun moyen de paiement actif n'est disponible.")
+        return payment_method
+
+    def _annotate_order_payment_choice(self, order, payment_method):
+        order.write({
+            "client_order_ref": payment_method["name"],
+            "note": Markup(
+                f"<p>Moyen de paiement choisi: <strong>{xml_escape(payment_method['name'])}</strong>"
+                f" via {xml_escape(payment_method['provider_name'])}.</p>"
+            ),
+        })
+
+    def _create_unpaid_invoices(self, order):
+        invoices = order.invoice_ids.filtered(lambda move: move.move_type == "out_invoice")
+        settings = self._checkout_settings(order)
+        if not invoices and settings["invoice_on_confirmation"]:
+            order._force_lines_to_invoice_policy_order()
+            invoices = order._create_invoices()
+        draft_invoices = invoices.filtered(lambda move: move.state == "draft")
+        if draft_invoices:
+            draft_invoices.action_post()
+        return invoices
+
+    def _serialize_order_result(self, order, invoice, payment_method):
+        return {
+            "id": order.id,
+            "name": order.name,
+            "state": order.state,
+            "amount_total": float(order.amount_total),
+            "amount_total_formatted": self._format_money(order.amount_total, order.currency_id),
+            "payment_method": payment_method,
+            "portal_url": f"/odoo/my/orders/{order.id}?access_token={order.access_token}",
+            "invoice": {
+                "id": invoice.id if invoice else False,
+                "name": invoice.name if invoice else "",
+                "state": invoice.state if invoice else "",
+                "payment_state": invoice.payment_state if invoice else "",
+                "portal_url": f"/odoo/my/invoices/{invoice.id}?access_token={invoice.access_token}" if invoice else "",
+            },
         }
 
     def _find_product_by_slug(self, slug):
@@ -910,7 +1881,7 @@ class KeurVenusSeoController(http.Controller):
                     priority="0.85" if has_target_keyword(keywords) else "0.7",
                     images=[
                         absolute_storefront_asset_url(
-                            f"/web/image/product.public.category/{category.id}/image_512"
+                            category.website_meta_og_img or f"/web/image/product.public.category/{category.id}/image_512"
                         )
                     ],
                 )
@@ -928,6 +1899,8 @@ class KeurVenusSeoController(http.Controller):
                 absolute_storefront_asset_url(storefront_api._product_image_url(image_record, "image_1024"))
                 for image_record in image_records[:6]
             ]
+            if product.website_meta_og_img:
+                images.insert(0, absolute_storefront_asset_url(product.website_meta_og_img))
             urls.append(
                 self._sitemap_entry(
                     f"/shop/{slugify(product.name, product.id)}",
@@ -1013,7 +1986,7 @@ def build_sitemap_response():
 
 def storefront_host(path="/", main_object=None):
     if not main_object:
-        main_object = request.website
+        main_object = storefront_main_object_for_path(path) or request.website
     seo = storefront_seo_values(path, main_object)
     return request.render(
         "theme_keurvenus.storefront_host",
@@ -1101,13 +2074,23 @@ def storefront_seo_values(path, main_object):
         },
     }
 
-    category = storefront_category_from_path(path)
+    normalized_path = (path or "/").split("?", 1)[0].rstrip("/") or "/"
+    page_record = main_object if main_object and main_object._name == "website.page" else storefront_page_from_path(normalized_path)
+    if page_record:
+        title = page_record.website_meta_title or title
+        description = short_text(page_record.website_meta_description or description)
+        keywords = unique_keywords((page_record.website_meta_keywords or "").split(",") + keywords)
+        image_url = absolute_storefront_asset_url(page_record.website_meta_og_img or image_url)
+
+    category = main_object if main_object and main_object._name == "product.public.category" else storefront_category_from_path(path)
     if category:
         title, description, keywords = category_seo_content(category)
-        image_url = absolute_storefront_asset_url(f"/web/image/product.public.category/{category.id}/image_512")
+        image_url = absolute_storefront_asset_url(
+            category.website_meta_og_img or f"/web/image/product.public.category/{category.id}/image_512"
+        )
         structured_data = collection_page_schema(category.name, description, path)
-    elif (path or "").split("?", 1)[0].rstrip("/") == "/shop":
-        title = "Boutique Kër Venus | Vaisselle, verrerie, cuisine et maison à Dakar"
+    elif normalized_path == "/shop":
+        title = page_record.website_meta_title if page_record and page_record.website_meta_title else "Boutique Kër Venus | Vaisselle, verrerie, cuisine et maison à Dakar"
         structured_data = collection_page_schema("Boutique Kër Venus", description, "/shop")
 
     if main_object and main_object._name == "product.template":
@@ -1131,9 +2114,10 @@ def storefront_seo_values(path, main_object):
         keywords = unique_keywords(product_keywords + DEFAULT_SEO_KEYWORDS)
         variant = KeurVenusStorefrontController()._default_variant(product)
         image_url = absolute_storefront_asset_url(
-            KeurVenusStorefrontController()._product_image_url(variant or product, "image_1024")
+            product.website_meta_og_img
+            or KeurVenusStorefrontController()._product_image_url(variant or product, "image_1024")
         )
-        product_url = absolute_storefront_url(product.website_url or f"/shop/{slugify(product.name, product.id)}")
+        product_url = absolute_storefront_url(f"/shop/{slugify(product.name, product.id)}")
         structured_data = {
             "@context": "https://schema.org",
             "@type": "Product",
@@ -1163,10 +2147,45 @@ def storefront_seo_values(path, main_object):
     }
 
 
+def seo_payload(path="/", main_object=None):
+    values = storefront_seo_values(path, main_object or storefront_main_object_for_path(path))
+    return {
+        "title": values["seo_title"],
+        "description": values["seo_description"],
+        "keywords": values["seo_keywords"],
+        "image": values["seo_image_url"],
+        "path": path or "/",
+    }
+
+
+def storefront_main_object_for_path(path="/"):
+    category = storefront_category_from_path(path)
+    if category:
+        return category
+    page = storefront_page_from_path((path or "/").split("?", 1)[0].rstrip("/") or "/")
+    return page or request.website
+
+
+def storefront_page_from_path(path="/"):
+    normalized_path = (path or "/").split("?", 1)[0].rstrip("/") or "/"
+    Page = request.env["website.page"].with_context(lang=_lang()).sudo()
+    return Page.search(
+        fields.Domain.AND([
+            request.website.website_domain(),
+            [("url", "=", normalized_path)],
+        ]),
+        limit=1,
+    )
+
+
 def storefront_category_from_path(path):
-    if not (path or "").split("?", 1)[0].rstrip("/") == "/shop":
+    raw_path = path or ""
+    normalized_path = raw_path.split("?", 1)[0].rstrip("/") or "/"
+    if normalized_path != "/shop":
         return False
     slug = request.httprequest.args.get("category")
+    if not slug and "?" in raw_path:
+        slug = (parse_qs(raw_path.split("?", 1)[1]).get("category") or [None])[0]
     if not slug:
         return False
     return KeurVenusStorefrontController()._category_from_slug(slug)
@@ -1184,19 +2203,25 @@ def category_seo_content(category):
         None,
     )
     if target:
-        return target["title"], target["description"], unique_keywords(target["keywords"] + DEFAULT_SEO_KEYWORDS)
+        return (
+            category.website_meta_title or target["title"],
+            short_text(category.website_meta_description or target["description"]),
+            unique_keywords((category.website_meta_keywords or "").split(",") + target["keywords"] + DEFAULT_SEO_KEYWORDS),
+        )
 
     description = short_text(
-        html2plaintext(category.website_description or "").strip()
+        category.website_meta_description
+        or html2plaintext(category.website_description or "").strip()
         or f"Découvrez la sélection {category.name} Kër Venus à Dakar: maison, cuisine, vaisselle et décoration intérieure."
     )
     keywords = unique_keywords([
+        *(category.website_meta_keywords or "").split(","),
         f"{category.name} Dakar",
         f"acheter {category.name} Dakar",
         "Kër Venus Dakar",
         *DEFAULT_SEO_KEYWORDS,
     ])
-    return f"{category.name} à Dakar | Boutique Kër Venus", description, keywords
+    return category.website_meta_title or f"{category.name} à Dakar | Boutique Kër Venus", description, keywords
 
 
 def collection_page_schema(name, description, path):

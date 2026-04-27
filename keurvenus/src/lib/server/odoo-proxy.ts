@@ -31,6 +31,11 @@ export async function proxyToOdoo(
   splat: string,
   mode: ProxyMode
 ) {
+  const storefrontAuthRedirect = getStorefrontAuthRedirect(request, splat, mode)
+  if (storefrontAuthRedirect) {
+    return Response.redirect(storefrontAuthRedirect, 302)
+  }
+
   if (mode === "api" && splat.startsWith("keurvenus/storefront/")) {
     const response = await handleStorefrontSessionRequest(request, splat)
     if (response) {
@@ -64,6 +69,17 @@ export async function proxyToOdoo(
     statusText: response.statusText,
     headers: forwardedHeaders,
   })
+}
+
+function getStorefrontAuthRedirect(request: Request, splat: string, mode: ProxyMode) {
+  if (mode !== "root") return null
+  const normalized = (splat || "").replace(/^\/+/, "")
+  if (normalized !== "web/signup" && normalized !== "web/reset_password") return null
+
+  const incomingUrl = new URL(request.url)
+  const target = new URL(normalized === "web/signup" ? "/register" : "/reset-password", incomingUrl.origin)
+  target.search = incomingUrl.search
+  return target.toString()
 }
 
 async function handleStorefrontSessionRequest(request: Request, splat: string) {

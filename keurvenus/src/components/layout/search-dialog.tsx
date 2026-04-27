@@ -116,7 +116,7 @@ export function SearchDialog({ variant = "bar", className }: SearchDialogProps) 
           <button
             type="button"
             className={cn(
-              "hidden h-12 w-52 items-center gap-3 rounded-full border border-charcoal/10 bg-white/68 px-2.5 text-left text-sm font-medium text-warm-gray shadow-[inset_0_1px_0_rgba(255,255,255,0.66)] transition hover:-translate-y-0.5 hover:border-gold/30 hover:bg-white hover:shadow-soft lg:flex xl:w-72 2xl:w-80",
+              "hidden h-12 w-48 items-center gap-3 rounded-full border border-charcoal/10 bg-white/68 px-2.5 text-left text-sm font-medium text-warm-gray shadow-[inset_0_1px_0_rgba(255,255,255,0.66)] transition hover:-translate-y-0.5 hover:border-gold/30 hover:bg-white hover:shadow-soft xl:flex xl:w-60 2xl:w-80",
               className
             )}
             aria-label="Ouvrir la recherche"

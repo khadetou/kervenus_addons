@@ -2,6 +2,10 @@ import { collections as fallbackCollections, products as fallbackProducts } from
 import { categoryImageFor } from "@/lib/category-media"
 import type {
   CartLine,
+  CartSummary,
+  CheckoutOrderResult,
+  CheckoutState,
+  CheckoutSubmitPayload,
   Collection,
   NavigationItem,
   PortalDashboard,
@@ -13,6 +17,7 @@ import type {
   StorefrontConfig,
   StorefrontFilters,
   StorefrontSession,
+  SeoMetadata,
 } from "@/lib/types"
 
 const API_PREFIX = "/api/keurvenus/storefront"
@@ -63,6 +68,35 @@ function normalizeAssetUrl(value?: string | null) {
   if (value.startsWith("http") || value.startsWith("data:")) return value
   if (value.startsWith("/odoo/")) return value
   return `${webBase}${value.startsWith("/") ? value : `/${value}`}`
+}
+
+function normalizeOdooUrl(value?: string | null) {
+  if (!value) return ""
+  if (value.startsWith("http")) return value
+  if (value.startsWith("/odoo/")) return value
+  return `${webBase}${value.startsWith("/") ? value : `/${value}`}`
+}
+
+function cleanHtmlText(value?: string | null) {
+  if (!value) return undefined
+  return value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim()
+}
+
+function mapSeo(payload?: Record<string, any> | null): SeoMetadata | undefined {
+  if (!payload) return undefined
+  const keywords = Array.isArray(payload.keywords)
+    ? payload.keywords
+    : String(payload.keywords || "")
+        .split(",")
+        .map((keyword) => keyword.trim())
+        .filter(Boolean)
+  return {
+    title: payload.title || undefined,
+    description: payload.description || undefined,
+    keywords,
+    image: normalizeAssetUrl(payload.image || payload.image_url || ""),
+    path: payload.path || payload.canonical_path || undefined,
+  }
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -235,6 +269,7 @@ export function mapOdooProduct(item: OdooProductPayload): Product {
     selectedAttributeSummary: selectedCombination.attribute_summary || undefined,
     variantOptions: mapVariantOptions(item),
     tags: [category, collection, item.ribbon, ...productTags].filter(Boolean),
+    seo: mapSeo(item.seo),
   }
   const variants = Array.isArray(item.variants)
     ? item.variants.map((variantItem: OdooProductPayload) => mapOdooVariant(variantItem, product))
@@ -251,6 +286,23 @@ export function mapOdooProduct(item: OdooProductPayload): Product {
   }
 
   return product
+}
+
+function mapPortalDocument(item: PortalDocument): PortalDocument {
+  return {
+    ...item,
+    preview_url: normalizeOdooUrl(item.preview_url),
+    download_url: normalizeOdooUrl(item.download_url),
+    odoo_portal_url: normalizeOdooUrl(item.odoo_portal_url),
+    related_invoices: item.related_invoices?.map((invoice) => ({
+      ...invoice,
+      download_url: normalizeOdooUrl(invoice.download_url),
+    })),
+    lines: item.lines?.map((line) => ({
+      ...line,
+      image_url: normalizeAssetUrl(line.image_url || ""),
+    })),
+  }
 }
 
 function mapOdooCollection(item: OdooCollectionPayload, index: number): Collection {
@@ -275,6 +327,7 @@ function mapOdooCollection(item: OdooCollectionPayload, index: number): Collecti
     parentName: item.parent_name || undefined,
     sequence: Number(item.sequence ?? index),
     depth: Number(item.depth ?? (item.parent_id ? 1 : 0)),
+    seo: mapSeo(item.seo),
   }
 }
 
@@ -411,8 +464,10 @@ export function buildNavigationFromCategories(collections: Collection[]): Naviga
   ]
 }
 
-export function mapOdooCart(cart: OdooCartPayload | null | undefined): { lines: CartLine[]; subtotal: number; itemCount: number } {
-  if (!cart) return { lines: [], subtotal: 0, itemCount: 0 }
+export function mapOdooCart(cart: OdooCartPayload | null | undefined): CartSummary {
+  if (!cart) {
+    return { lines: [], subtotal: 0, delivery: 0, tax: 0, total: 0, itemCount: 0 }
+  }
   const lines = (cart.lines || []).map((line: Record<string, any>) => ({
     lineId: Number(line.id),
     quantity: Number(line.quantity || 0),
@@ -433,8 +488,90 @@ export function mapOdooCart(cart: OdooCartPayload | null | undefined): { lines: 
 
   return {
     lines,
-    subtotal: Number(cart.amount_total ?? cart.amount_untaxed ?? 0),
+    subtotal: Number(cart.amount_untaxed ?? cart.amount_total ?? 0),
+    delivery: Number(cart.amount_delivery ?? 0),
+    tax: Number(cart.amount_tax ?? 0),
+    total: Number(cart.amount_total ?? cart.amount_untaxed ?? 0),
     itemCount: Number(cart.items_count ?? lines.reduce((total: number, line: CartLine) => total + line.quantity, 0)),
+    formatted: {
+      subtotal: cleanHtmlText(cart.amount_untaxed_formatted),
+      delivery: cleanHtmlText(cart.amount_delivery_formatted),
+      tax: cleanHtmlText(cart.amount_tax_formatted),
+      total: cleanHtmlText(cart.amount_total_formatted),
+    },
+  }
+}
+
+function mapOdooCheckout(payload: Record<string, any>): CheckoutState {
+  const deliveryMethods = Array.isArray(payload.delivery_methods) ? payload.delivery_methods : []
+  const paymentMethods = Array.isArray(payload.payment_methods) ? payload.payment_methods : []
+  const comingSoonPaymentMethods = Array.isArray(payload.coming_soon_payment_methods)
+    ? payload.coming_soon_payment_methods
+    : []
+
+  return {
+    authenticated: Boolean(payload.authenticated),
+    login_url: payload.login_url || "/login?redirect=/checkout",
+    signup_url: payload.signup_url || "/register?redirect=/checkout",
+    cart: mapOdooCart(payload.cart),
+    delivery_methods: deliveryMethods.map((method: Record<string, any>) => ({
+      ...method,
+      id: Number(method.id),
+      name: cleanHtmlText(method.name) || method.name,
+      description: cleanHtmlText(method.description) || "",
+      price: Number(method.price || 0),
+      price_formatted: cleanHtmlText(method.price_formatted),
+      message: cleanHtmlText(method.message) || "",
+    })),
+    payment_methods: paymentMethods.map((method: Record<string, any>) => ({
+      ...method,
+      id: String(method.id),
+      provider_name: cleanHtmlText(method.provider_name) || method.provider_name,
+      name: cleanHtmlText(method.name) || method.name,
+      label: cleanHtmlText(method.label) || method.label,
+      available: method.available !== false,
+    })),
+    coming_soon_payment_methods: comingSoonPaymentMethods.map((method: Record<string, any>) => ({
+      ...method,
+      id: String(method.id),
+      name: cleanHtmlText(method.name) || method.name,
+      label: cleanHtmlText(method.label) || method.label,
+      available: method.available === true,
+    })),
+    selected_delivery_method_id: payload.selected_delivery_method_id || false,
+    selected_payment_method_id: payload.selected_payment_method_id || false,
+    account_on_checkout: payload.account_on_checkout,
+    settings: payload.settings || {},
+  }
+}
+
+function mapOdooCheckoutOrderResult(order: Record<string, any>): CheckoutOrderResult {
+  const paymentMethod = order.payment_method
+    ? {
+        ...order.payment_method,
+        id: String(order.payment_method.id),
+        provider_name: cleanHtmlText(order.payment_method.provider_name) || order.payment_method.provider_name,
+        name: cleanHtmlText(order.payment_method.name) || order.payment_method.name,
+        label: cleanHtmlText(order.payment_method.label) || order.payment_method.label,
+        available: order.payment_method.available !== false,
+      }
+    : undefined
+  return {
+    ...order,
+    id: Number(order.id || 0),
+    name: String(order.name || ""),
+    state: String(order.state || ""),
+    amount_total: Number(order.amount_total || 0),
+    amount_total_formatted: cleanHtmlText(order.amount_total_formatted),
+    payment_method: paymentMethod,
+    invoice: order.invoice
+      ? {
+          ...order.invoice,
+          name: cleanHtmlText(order.invoice.name) || order.invoice.name,
+          state: cleanHtmlText(order.invoice.state) || order.invoice.state,
+          payment_state: cleanHtmlText(order.invoice.payment_state) || order.invoice.payment_state,
+        }
+      : undefined,
   }
 }
 
@@ -455,6 +592,37 @@ export async function loginWithOdoo(login: string, password: string) {
     body: JSON.stringify({ login, password }),
   })
   return payload.session
+}
+
+export async function signupWithOdoo(data: {
+  name: string
+  login: string
+  password: string
+  confirm_password: string
+  redirect?: string
+}) {
+  return requestJson<{ ok: boolean; redirect_url?: string }>("/auth/signup", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function requestOdooPasswordReset(login: string) {
+  return requestJson<{ ok: boolean; message?: string }>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ login }),
+  })
+}
+
+export async function confirmOdooPasswordReset(data: {
+  token: string
+  password: string
+  confirm_password: string
+}) {
+  return requestJson<{ ok: boolean; message?: string }>("/auth/reset-password/confirm", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
 }
 
 export async function getOdooProducts(options: ProductQueryOptions = {}) {
@@ -502,6 +670,12 @@ export async function getOdooProductsPage(
 export async function getOdooStorefrontConfig() {
   const payload = await requestJson<Record<string, any>>("/config")
   return mapOdooConfig(payload)
+}
+
+export async function getOdooSeo(path = "/") {
+  const search = new URLSearchParams({ path })
+  const payload = await requestJson<{ seo?: Record<string, any> }>(`/seo?${search.toString()}`)
+  return mapSeo(payload.seo)
 }
 
 export async function getOdooShopFilters(options: { category?: string; search?: string } = {}) {
@@ -574,6 +748,19 @@ export async function updateOdooCartLine(lineId: number, quantity: number) {
   return mapOdooCart(payload.cart)
 }
 
+export async function getOdooCheckout() {
+  const payload = await requestJson<{ checkout: Record<string, any> }>("/checkout")
+  return mapOdooCheckout(payload.checkout)
+}
+
+export async function submitOdooCheckout(data: CheckoutSubmitPayload) {
+  const payload = await requestJson<{ order: Record<string, any> }>("/checkout/submit", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+  return mapOdooCheckoutOrderResult(payload.order)
+}
+
 export async function getOdooWishlist() {
   const payload = await requestJson<{ items: OdooProductPayload[] }>("/wishlist")
   return payload.items.map(mapOdooProduct)
@@ -596,25 +783,56 @@ export async function removeOdooWishlistItem(wishId: number) {
 }
 
 export async function getPortalDashboard() {
-  return requestJson<PortalDashboard>("/portal")
+  const payload = await requestJson<PortalDashboard>("/portal")
+  return {
+    ...payload,
+    recent_quotes: payload.recent_quotes.map(mapPortalDocument),
+    recent_orders: payload.recent_orders.map(mapPortalDocument),
+    recent_invoices: payload.recent_invoices.map(mapPortalDocument),
+  }
 }
 
 export async function getPortalOrders() {
   const payload = await requestJson<{ items: PortalDocument[] }>("/portal/orders?page_size=12")
-  return payload.items
+  return payload.items.map(mapPortalDocument)
+}
+
+export async function getPortalOrder(id: number | string) {
+  const payload = await requestJson<{ item: PortalDocument }>(`/portal/orders/${id}`)
+  return mapPortalDocument(payload.item)
 }
 
 export async function getPortalQuotes() {
   const payload = await requestJson<{ items: PortalDocument[] }>("/portal/quotes?page_size=12")
-  return payload.items
+  return payload.items.map(mapPortalDocument)
+}
+
+export async function getPortalQuote(id: number | string) {
+  const payload = await requestJson<{ item: PortalDocument }>(`/portal/quotes/${id}`)
+  return mapPortalDocument(payload.item)
 }
 
 export async function getPortalInvoices() {
   const payload = await requestJson<{ items: PortalDocument[] }>("/portal/invoices?page_size=12")
-  return payload.items
+  return payload.items.map(mapPortalDocument)
+}
+
+export async function getPortalInvoice(id: number | string) {
+  const payload = await requestJson<{ item: PortalDocument }>(`/portal/invoices/${id}`)
+  return mapPortalDocument(payload.item)
 }
 
 export function getOdooLoginUrl(redirect = "/portal") {
   const target = encodeURIComponent(redirect)
   return `${webBase}/web/login?redirect=${target}`
+}
+
+export function getOdooSignupUrl(redirect = "/portal") {
+  const target = encodeURIComponent(redirect)
+  return `/register?redirect=${target}`
+}
+
+export function getOdooResetPasswordUrl(redirect = "/portal") {
+  const target = encodeURIComponent(redirect)
+  return `/reset-password?redirect=${target}`
 }

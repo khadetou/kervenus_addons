@@ -1,8 +1,8 @@
-import type { Product } from "@/lib/types"
+import type { Product, SeoMetadata } from "@/lib/types"
 
 const SITE_NAME = "Kër Venus"
 const SITE_URL = (import.meta.env.VITE_SITE_URL || "https://www.keurvenus.sn").replace(/\/$/, "")
-const DEFAULT_IMAGE = `${SITE_URL}/LOGO.svg`
+const DEFAULT_IMAGE = `${SITE_URL}/assets/landing/banner-art-table.png`
 const DEFAULT_KEYWORDS = [
   "Kër Venus",
   "boutique maison Dakar",
@@ -102,6 +102,21 @@ type SeoOptions = {
   structuredData?: Record<string, unknown>
 }
 
+export function applySeoMetadata<T extends SeoOptions>(
+  fallback: T,
+  metadata?: SeoMetadata | null
+): T {
+  if (!metadata) return fallback
+  return {
+    ...fallback,
+    title: metadata.title || fallback.title,
+    description: metadata.description || fallback.description,
+    path: metadata.path || fallback.path,
+    image: metadata.image || fallback.image,
+    keywords: metadata.keywords?.length ? metadata.keywords : fallback.keywords,
+  } as T
+}
+
 export function storefrontUrl(path = "/") {
   if (/^https?:\/\//i.test(path)) return path
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`
@@ -170,6 +185,7 @@ export function categorySeoFor(category?: {
   slug?: string
   description?: string
   image?: string
+  seo?: SeoMetadata
 }) {
   const key = `${category?.name || ""} ${category?.slug || ""}`.toLowerCase()
   const target = CATEGORY_SEO_TARGETS.find((item) =>
@@ -180,7 +196,7 @@ export function categorySeoFor(category?: {
 
   if (target) {
     const name = category?.name || target.name
-    return {
+    return applySeoMetadata({
       name,
       title: target.title,
       description: target.description,
@@ -188,14 +204,14 @@ export function categorySeoFor(category?: {
       path,
       image: category?.image,
       structuredData: collectionStructuredData(name, target.description, path),
-    }
+    }, category?.seo)
   }
 
   const description =
     cleanSeoText(category?.description, 150) ||
     `Découvrez la sélection ${categoryName} Kër Venus à Dakar: pièces maison, vaisselle, cuisine et décoration intérieure.`
 
-  return {
+  return applySeoMetadata({
     name: categoryName,
     title: `${categoryName} à Dakar | Boutique Kër Venus`,
     description,
@@ -203,7 +219,7 @@ export function categorySeoFor(category?: {
     path,
     image: category?.image,
     structuredData: collectionStructuredData(categoryName, description, path),
-  }
+  }, category?.seo)
 }
 
 export function shopStructuredData() {

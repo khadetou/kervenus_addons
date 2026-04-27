@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WishlistRouteImport } from './routes/wishlist'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as LookbookRouteImport } from './routes/lookbook'
 import { Route as LoginRouteImport } from './routes/login'
@@ -21,13 +23,29 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShopIndexRouteImport } from './routes/shop.index'
 import { Route as CollectionsIndexRouteImport } from './routes/collections.index'
 import { Route as ShopSlugRouteImport } from './routes/shop.$slug'
+import { Route as PortalQuotesRouteImport } from './routes/portal.quotes'
+import { Route as PortalOrdersRouteImport } from './routes/portal.orders'
+import { Route as PortalInvoicesRouteImport } from './routes/portal.invoices'
 import { Route as OdooSplatRouteImport } from './routes/odoo.$'
 import { Route as CollectionsSlugRouteImport } from './routes/collections.$slug'
+import { Route as PortalQuotesIdRouteImport } from './routes/portal.quotes.$id'
+import { Route as PortalOrdersIdRouteImport } from './routes/portal.orders.$id'
+import { Route as PortalInvoicesIdRouteImport } from './routes/portal.invoices.$id'
 import { Route as ApiOdooSplatRouteImport } from './routes/api/odoo.$'
 
 const WishlistRoute = WishlistRouteImport.update({
   id: '/wishlist',
   path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalRoute = PortalRouteImport.update({
@@ -85,6 +103,21 @@ const ShopSlugRoute = ShopSlugRouteImport.update({
   path: '/shop/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalQuotesRoute = PortalQuotesRouteImport.update({
+  id: '/quotes',
+  path: '/quotes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalOrdersRoute = PortalOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalInvoicesRoute = PortalInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => PortalRoute,
+} as any)
 const OdooSplatRoute = OdooSplatRouteImport.update({
   id: '/odoo/$',
   path: '/odoo/$',
@@ -94,6 +127,21 @@ const CollectionsSlugRoute = CollectionsSlugRouteImport.update({
   id: '/collections/$slug',
   path: '/collections/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PortalQuotesIdRoute = PortalQuotesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalQuotesRoute,
+} as any)
+const PortalOrdersIdRoute = PortalOrdersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalOrdersRoute,
+} as any)
+const PortalInvoicesIdRoute = PortalInvoicesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalInvoicesRoute,
 } as any)
 const ApiOdooSplatRoute = ApiOdooSplatRouteImport.update({
   id: '/api/odoo/$',
@@ -109,14 +157,22 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/lookbook': typeof LookbookRoute
-  '/portal': typeof PortalRoute
+  '/portal': typeof PortalRouteWithChildren
+  '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/wishlist': typeof WishlistRoute
   '/collections/$slug': typeof CollectionsSlugRoute
   '/odoo/$': typeof OdooSplatRoute
+  '/portal/invoices': typeof PortalInvoicesRouteWithChildren
+  '/portal/orders': typeof PortalOrdersRouteWithChildren
+  '/portal/quotes': typeof PortalQuotesRouteWithChildren
   '/shop/$slug': typeof ShopSlugRoute
   '/collections/': typeof CollectionsIndexRoute
   '/shop/': typeof ShopIndexRoute
   '/api/odoo/$': typeof ApiOdooSplatRoute
+  '/portal/invoices/$id': typeof PortalInvoicesIdRoute
+  '/portal/orders/$id': typeof PortalOrdersIdRoute
+  '/portal/quotes/$id': typeof PortalQuotesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,14 +182,22 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/lookbook': typeof LookbookRoute
-  '/portal': typeof PortalRoute
+  '/portal': typeof PortalRouteWithChildren
+  '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/wishlist': typeof WishlistRoute
   '/collections/$slug': typeof CollectionsSlugRoute
   '/odoo/$': typeof OdooSplatRoute
+  '/portal/invoices': typeof PortalInvoicesRouteWithChildren
+  '/portal/orders': typeof PortalOrdersRouteWithChildren
+  '/portal/quotes': typeof PortalQuotesRouteWithChildren
   '/shop/$slug': typeof ShopSlugRoute
   '/collections': typeof CollectionsIndexRoute
   '/shop': typeof ShopIndexRoute
   '/api/odoo/$': typeof ApiOdooSplatRoute
+  '/portal/invoices/$id': typeof PortalInvoicesIdRoute
+  '/portal/orders/$id': typeof PortalOrdersIdRoute
+  '/portal/quotes/$id': typeof PortalQuotesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -144,14 +208,22 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/login': typeof LoginRoute
   '/lookbook': typeof LookbookRoute
-  '/portal': typeof PortalRoute
+  '/portal': typeof PortalRouteWithChildren
+  '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/wishlist': typeof WishlistRoute
   '/collections/$slug': typeof CollectionsSlugRoute
   '/odoo/$': typeof OdooSplatRoute
+  '/portal/invoices': typeof PortalInvoicesRouteWithChildren
+  '/portal/orders': typeof PortalOrdersRouteWithChildren
+  '/portal/quotes': typeof PortalQuotesRouteWithChildren
   '/shop/$slug': typeof ShopSlugRoute
   '/collections/': typeof CollectionsIndexRoute
   '/shop/': typeof ShopIndexRoute
   '/api/odoo/$': typeof ApiOdooSplatRoute
+  '/portal/invoices/$id': typeof PortalInvoicesIdRoute
+  '/portal/orders/$id': typeof PortalOrdersIdRoute
+  '/portal/quotes/$id': typeof PortalQuotesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -164,13 +236,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/lookbook'
     | '/portal'
+    | '/register'
+    | '/reset-password'
     | '/wishlist'
     | '/collections/$slug'
     | '/odoo/$'
+    | '/portal/invoices'
+    | '/portal/orders'
+    | '/portal/quotes'
     | '/shop/$slug'
     | '/collections/'
     | '/shop/'
     | '/api/odoo/$'
+    | '/portal/invoices/$id'
+    | '/portal/orders/$id'
+    | '/portal/quotes/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -181,13 +261,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/lookbook'
     | '/portal'
+    | '/register'
+    | '/reset-password'
     | '/wishlist'
     | '/collections/$slug'
     | '/odoo/$'
+    | '/portal/invoices'
+    | '/portal/orders'
+    | '/portal/quotes'
     | '/shop/$slug'
     | '/collections'
     | '/shop'
     | '/api/odoo/$'
+    | '/portal/invoices/$id'
+    | '/portal/orders/$id'
+    | '/portal/quotes/$id'
   id:
     | '__root__'
     | '/'
@@ -198,13 +286,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/lookbook'
     | '/portal'
+    | '/register'
+    | '/reset-password'
     | '/wishlist'
     | '/collections/$slug'
     | '/odoo/$'
+    | '/portal/invoices'
+    | '/portal/orders'
+    | '/portal/quotes'
     | '/shop/$slug'
     | '/collections/'
     | '/shop/'
     | '/api/odoo/$'
+    | '/portal/invoices/$id'
+    | '/portal/orders/$id'
+    | '/portal/quotes/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -215,7 +311,9 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   LoginRoute: typeof LoginRoute
   LookbookRoute: typeof LookbookRoute
-  PortalRoute: typeof PortalRoute
+  PortalRoute: typeof PortalRouteWithChildren
+  RegisterRoute: typeof RegisterRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   WishlistRoute: typeof WishlistRoute
   CollectionsSlugRoute: typeof CollectionsSlugRoute
   OdooSplatRoute: typeof OdooSplatRoute
@@ -232,6 +330,20 @@ declare module '@tanstack/react-router' {
       path: '/wishlist'
       fullPath: '/wishlist'
       preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal': {
@@ -311,6 +423,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/quotes': {
+      id: '/portal/quotes'
+      path: '/quotes'
+      fullPath: '/portal/quotes'
+      preLoaderRoute: typeof PortalQuotesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/orders': {
+      id: '/portal/orders'
+      path: '/orders'
+      fullPath: '/portal/orders'
+      preLoaderRoute: typeof PortalOrdersRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/invoices': {
+      id: '/portal/invoices'
+      path: '/invoices'
+      fullPath: '/portal/invoices'
+      preLoaderRoute: typeof PortalInvoicesRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/odoo/$': {
       id: '/odoo/$'
       path: '/odoo/$'
@@ -325,6 +458,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CollectionsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/quotes/$id': {
+      id: '/portal/quotes/$id'
+      path: '/$id'
+      fullPath: '/portal/quotes/$id'
+      preLoaderRoute: typeof PortalQuotesIdRouteImport
+      parentRoute: typeof PortalQuotesRoute
+    }
+    '/portal/orders/$id': {
+      id: '/portal/orders/$id'
+      path: '/$id'
+      fullPath: '/portal/orders/$id'
+      preLoaderRoute: typeof PortalOrdersIdRouteImport
+      parentRoute: typeof PortalOrdersRoute
+    }
+    '/portal/invoices/$id': {
+      id: '/portal/invoices/$id'
+      path: '/$id'
+      fullPath: '/portal/invoices/$id'
+      preLoaderRoute: typeof PortalInvoicesIdRouteImport
+      parentRoute: typeof PortalInvoicesRoute
+    }
     '/api/odoo/$': {
       id: '/api/odoo/$'
       path: '/api/odoo/$'
@@ -335,6 +489,57 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface PortalInvoicesRouteChildren {
+  PortalInvoicesIdRoute: typeof PortalInvoicesIdRoute
+}
+
+const PortalInvoicesRouteChildren: PortalInvoicesRouteChildren = {
+  PortalInvoicesIdRoute: PortalInvoicesIdRoute,
+}
+
+const PortalInvoicesRouteWithChildren = PortalInvoicesRoute._addFileChildren(
+  PortalInvoicesRouteChildren,
+)
+
+interface PortalOrdersRouteChildren {
+  PortalOrdersIdRoute: typeof PortalOrdersIdRoute
+}
+
+const PortalOrdersRouteChildren: PortalOrdersRouteChildren = {
+  PortalOrdersIdRoute: PortalOrdersIdRoute,
+}
+
+const PortalOrdersRouteWithChildren = PortalOrdersRoute._addFileChildren(
+  PortalOrdersRouteChildren,
+)
+
+interface PortalQuotesRouteChildren {
+  PortalQuotesIdRoute: typeof PortalQuotesIdRoute
+}
+
+const PortalQuotesRouteChildren: PortalQuotesRouteChildren = {
+  PortalQuotesIdRoute: PortalQuotesIdRoute,
+}
+
+const PortalQuotesRouteWithChildren = PortalQuotesRoute._addFileChildren(
+  PortalQuotesRouteChildren,
+)
+
+interface PortalRouteChildren {
+  PortalInvoicesRoute: typeof PortalInvoicesRouteWithChildren
+  PortalOrdersRoute: typeof PortalOrdersRouteWithChildren
+  PortalQuotesRoute: typeof PortalQuotesRouteWithChildren
+}
+
+const PortalRouteChildren: PortalRouteChildren = {
+  PortalInvoicesRoute: PortalInvoicesRouteWithChildren,
+  PortalOrdersRoute: PortalOrdersRouteWithChildren,
+  PortalQuotesRoute: PortalQuotesRouteWithChildren,
+}
+
+const PortalRouteWithChildren =
+  PortalRoute._addFileChildren(PortalRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
@@ -343,7 +548,9 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   LoginRoute: LoginRoute,
   LookbookRoute: LookbookRoute,
-  PortalRoute: PortalRoute,
+  PortalRoute: PortalRouteWithChildren,
+  RegisterRoute: RegisterRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   WishlistRoute: WishlistRoute,
   CollectionsSlugRoute: CollectionsSlugRoute,
   OdooSplatRoute: OdooSplatRoute,

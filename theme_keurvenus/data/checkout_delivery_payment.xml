@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="delivery.free_delivery_carrier" model="delivery.carrier">
+        <field name="allow_cash_on_delivery" eval="True"/>
+        <field name="is_published" eval="True"/>
+    </record>
+    <function model="delivery.carrier" name="write"
+              eval="([ref('delivery.free_delivery_carrier')], {'allow_cash_on_delivery': True, 'is_published': True})"/>
+
+    <record id="theme_keurvenus_delivery_pickup" model="delivery.carrier">
+        <field name="name">Retrait en magasin</field>
+        <field name="sequence">2</field>
+        <field name="delivery_type">fixed</field>
+        <field name="product_id" ref="delivery.product_product_delivery"/>
+        <field name="fixed_price">0.0</field>
+        <field name="allow_cash_on_delivery" eval="True"/>
+        <field name="is_published" eval="True"/>
+        <field name="website_description">&lt;p&gt;Récupérez votre commande en boutique après confirmation de disponibilité.&lt;/p&gt;</field>
+    </record>
+</odoo>

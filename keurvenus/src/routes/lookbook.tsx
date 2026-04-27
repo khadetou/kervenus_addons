@@ -3,16 +3,19 @@ import { Link, createFileRoute } from "@tanstack/react-router"
 import { AppIcon } from "@/components/icons/icon"
 import { Button } from "@/components/ui/button"
 import { useLookbook } from "@/hooks/use-lookbook"
-import { seoHead } from "@/lib/seo"
+import { getOdooSeo } from "@/lib/odoo-api"
+import { applySeoMetadata, seoHead } from "@/lib/seo"
 
 export const Route = createFileRoute("/lookbook")({
-  head: () =>
-    seoHead({
+  loader: async () => getOdooSeo("/lookbook").catch(() => undefined),
+  head: ({ loaderData }) =>
+    seoHead(applySeoMetadata({
       title: "Lookbook maison | Kër Venus",
       description:
         "Inspirez vos ambiances maison avec le lookbook Kër Venus: idées de table, décoration, cuisine et art de vivre.",
       path: "/lookbook",
-    }),
+      image: "/assets/landing/banner-verrerie.png",
+    }, loaderData)),
   component: LookbookPage,
 })
 

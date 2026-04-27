@@ -10,7 +10,7 @@ import { useProduct } from "@/hooks/use-product"
 import { getProductBySlug } from "@/data/products"
 import { getOdooProductBySlug } from "@/lib/odoo-api"
 import { useProductVariantSelection } from "@/lib/product-variants"
-import { cleanSeoText, productStructuredData, seoHead } from "@/lib/seo"
+import { applySeoMetadata, cleanSeoText, productStructuredData, seoHead } from "@/lib/seo"
 
 export const Route = createFileRoute("/shop/$slug")({
   loader: async ({ params }) =>
@@ -26,14 +26,14 @@ export const Route = createFileRoute("/shop/$slug")({
       })
     }
 
-    return seoHead({
+    return seoHead(applySeoMetadata({
       title: `${product.name} | Kër Venus`,
       description: cleanSeoText(product.description || product.shortDescription),
       path: `/shop/${product.slug}`,
       image: product.images[0],
       type: "product",
       structuredData: productStructuredData(product),
-    })
+    }, product.seo))
   },
   component: ProductPage,
 })

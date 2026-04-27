@@ -30,6 +30,7 @@ export type Product = {
   variants?: ProductVariant[]
   variantOptions?: ProductVariantOptionGroup[]
   tags: string[]
+  seo?: SeoMetadata
 }
 
 export type ProductVariantAttributeValue = {
@@ -93,6 +94,7 @@ export type Collection = {
   sequence?: number
   depth?: number
   children?: Collection[]
+  seo?: SeoMetadata
 }
 
 export type StorefrontFilterOption = {
@@ -165,10 +167,119 @@ export type SiteContent = {
   location: string
 }
 
+export type SeoMetadata = {
+  title?: string
+  description?: string
+  keywords?: string[]
+  image?: string
+  path?: string
+}
+
 export type CartLine = {
   lineId?: number
   product: Product
   quantity: number
+}
+
+export type CartSummary = {
+  lines: CartLine[]
+  subtotal: number
+  delivery: number
+  tax: number
+  total: number
+  itemCount: number
+  formatted?: {
+    subtotal?: string
+    delivery?: string
+    tax?: string
+    total?: string
+  }
+}
+
+export type CheckoutDeliveryMethod = {
+  id: number
+  name: string
+  description?: string
+  price: number
+  price_formatted?: string
+  selected?: boolean
+  is_pickup?: boolean
+  allows_cash_on_delivery?: boolean
+  invoice_policy?: string
+  available?: boolean
+  message?: string
+}
+
+export type CheckoutPaymentMethod = {
+  id: string
+  provider_id?: number
+  provider_name?: string
+  provider_code?: string
+  method_id?: number
+  name: string
+  code?: string
+  flow?: "offline" | "redirect" | string
+  available: boolean
+  label?: string
+}
+
+export type CheckoutSettings = {
+  account_on_checkout?: "optional" | "disabled" | "mandatory" | string
+  guest_checkout?: boolean
+  ecommerce_access?: string
+  add_to_cart_action?: string
+  show_line_subtotals_tax_selection?: string
+  invoice_policy?: "order" | "delivery" | string
+  invoice_on_confirmation?: boolean
+  automatic_invoice?: boolean
+  portal_payment_enabled?: boolean
+  order_lines_invoice_on_order?: boolean
+}
+
+export type CheckoutState = {
+  authenticated: boolean
+  login_url: string
+  signup_url: string
+  cart: CartSummary
+  delivery_methods: CheckoutDeliveryMethod[]
+  payment_methods: CheckoutPaymentMethod[]
+  coming_soon_payment_methods?: CheckoutPaymentMethod[]
+  selected_delivery_method_id?: number | false
+  selected_payment_method_id?: string | false
+  account_on_checkout?: string
+  settings?: CheckoutSettings
+}
+
+export type CheckoutSubmitPayload = {
+  delivery_method_id?: number
+  payment_method_id?: string
+  customer: {
+    first_name?: string
+    last_name?: string
+    name?: string
+    email?: string
+    phone?: string
+    address?: string
+    street?: string
+    city?: string
+  }
+}
+
+export type CheckoutOrderResult = {
+  id: number
+  name: string
+  state: string
+  amount_total: number
+  amount_total_formatted?: string
+  payment_method?: CheckoutPaymentMethod
+  portal_url?: string
+  invoice?: {
+    id?: number | false
+    name?: string
+    state?: string
+    payment_state?: string
+    portal_url?: string
+  }
 }
 
 export type PortalLink = {
@@ -232,6 +343,39 @@ export type PortalDocumentLine = {
   subtotal?: number
   price_unit_formatted?: string
   subtotal_formatted?: string
+  product_id?: number | false
+  template_id?: number | false
+  slug?: string
+  image_url?: string
+}
+
+export type PortalRelatedDocument = {
+  id: number
+  name: string
+  date?: string | null
+  state?: string
+  payment_state?: string
+  amount_total_formatted?: string
+  amount_due_formatted?: string
+  href?: string
+  download_url?: string
+  type?: "order" | "quote" | "invoice" | string
+}
+
+export type PortalShipment = {
+  id: number
+  name: string
+  state: string
+  state_label?: string
+  scheduled_date?: string | null
+  date_done?: string | null
+}
+
+export type PortalUserSummary = {
+  id?: number | false
+  name?: string
+  email?: string
+  phone?: string
 }
 
 export type PortalDocument = {
@@ -243,10 +387,39 @@ export type PortalDocument = {
   due_date?: string | null
   state: string
   payment_state?: string
+  invoice_status?: string
+  payment_reference?: string
+  invoice_origin?: string
   amount_total: number
   amount_total_formatted: string
+  amount_due?: number
+  amount_due_formatted?: string
+  amount_untaxed?: number
+  amount_tax?: number
+  amount_untaxed_formatted?: string
+  amount_tax_formatted?: string
   href?: string
+  odoo_portal_url?: string
+  preview_url?: string
+  download_url?: string
+  partner?: PortalPartner
+  invoice_partner?: PortalPartner
+  shipping_partner?: PortalPartner
+  salesperson?: PortalUserSummary
+  delivery?: {
+    carrier?: string
+    amount?: number
+    amount_formatted?: string
+  }
+  delivery_status?: {
+    state?: string
+    label?: string
+  }
   lines?: PortalDocumentLine[]
+  related_invoices?: PortalRelatedDocument[]
+  related_orders?: PortalRelatedDocument[]
+  shipments?: PortalShipment[]
+  type?: "order" | "quote" | "invoice" | string
 }
 
 export type PortalDashboard = {

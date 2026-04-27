@@ -27,7 +27,8 @@ import { Slider } from "@/components/ui/slider"
 import { useProductsInfinite, useProductsPage, useShopFilters, useStorefrontConfig } from "@/hooks/use-products"
 import { useSession } from "@/hooks/use-session"
 import { categoryImageFor, categoryImagePosition } from "@/lib/category-media"
-import { categorySeoFor, seoHead, shopStructuredData } from "@/lib/seo"
+import { getOdooSeo } from "@/lib/odoo-api"
+import { applySeoMetadata, categorySeoFor, seoHead, shopStructuredData } from "@/lib/seo"
 import type { StorefrontAttributeFilter, StorefrontPriceFilter } from "@/lib/types"
 
 type ShopSearch = {
@@ -48,26 +49,34 @@ export const Route = createFileRoute("/shop/")({
     }
     return result
   },
-  head: ({ match }) => {
+  loaderDeps: ({ search }) => ({ category: search.category }),
+  loader: async ({ deps }) => {
+    const path = deps.category
+      ? `/shop?category=${encodeURIComponent(deps.category)}`
+      : "/shop"
+    return getOdooSeo(path).catch(() => undefined)
+  },
+  head: ({ match, loaderData }) => {
     const search = match.search as ShopSearch
     const categorySlug = search.category
     if (categorySlug) {
       const seo = categorySeoFor({ slug: categorySlug })
-      return seoHead({
+      return seoHead(applySeoMetadata({
         title: seo.title,
         description: seo.description,
         path: seo.path,
         image: seo.image,
         keywords: seo.keywords,
         structuredData: seo.structuredData,
-      })
+      }, loaderData))
     }
 
-    return seoHead({
+    return seoHead(applySeoMetadata({
       title: "Boutique Kër Venus | Vaisselle, verrerie, cuisine et maison à Dakar",
       description:
         "Explorez la boutique Kër Venus à Dakar: vaisselle, verrerie, accessoires de cuisine, batteries de cuisine, rangement, décoration et pièces maison.",
       path: "/shop",
+      image: "/assets/landing/banner-art-table.png",
       keywords: [
         "boutique maison Dakar",
         "vaisselle Dakar",
@@ -77,7 +86,7 @@ export const Route = createFileRoute("/shop/")({
         "décoration intérieure Dakar",
       ],
       structuredData: shopStructuredData(),
-    })
+    }, loaderData))
   },
   component: ShopPage,
 })

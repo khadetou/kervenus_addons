@@ -1,16 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { ContactSection } from "@/components/sections/contact-section"
-import { seoHead } from "@/lib/seo"
+import { getOdooSeo } from "@/lib/odoo-api"
+import { applySeoMetadata, seoHead } from "@/lib/seo"
 
 export const Route = createFileRoute("/contact")({
-  head: () =>
-    seoHead({
+  loader: async () => getOdooSeo("/contact").catch(() => undefined),
+  head: ({ loaderData }) =>
+    seoHead(applySeoMetadata({
       title: "Contact | Kër Venus Dakar",
       description:
         "Contactez Kër Venus à Dakar pour une commande, un conseil personnalisé ou une question sur la boutique maison.",
       path: "/contact",
-    }),
+      image: "/assets/landing/banner-art-table.png",
+    }, loaderData)),
   component: ContactPage,
 })
 

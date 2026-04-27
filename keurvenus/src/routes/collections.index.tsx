@@ -1,16 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { CollectionGrid } from "@/components/sections/collection-grid"
-import { seoHead } from "@/lib/seo"
+import { getOdooSeo } from "@/lib/odoo-api"
+import { applySeoMetadata, seoHead } from "@/lib/seo"
 
 export const Route = createFileRoute("/collections/")({
-  head: () =>
-    seoHead({
+  loader: async () => getOdooSeo("/collections").catch(() => undefined),
+  head: ({ loaderData }) =>
+    seoHead(applySeoMetadata({
       title: "Collections maison | Kër Venus",
       description:
         "Parcourez les collections Kër Venus pour trouver des univers maison prêts à habiter: table, cuisine, verrerie, rangement et décoration.",
       path: "/collections",
-    }),
+      image: "/assets/landing/banner-conservation.png",
+    }, loaderData)),
   component: CollectionsPage,
 })
 

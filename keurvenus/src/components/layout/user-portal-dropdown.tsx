@@ -14,9 +14,9 @@ import { useLogout, useSession } from "@/hooks/use-session"
 
 const portalItems = [
   { label: "Mon portail", href: "/portal", icon: "solar:user-rounded-linear" },
-  { label: "Commandes", href: "/portal#orders", icon: "solar:bag-4-linear" },
-  { label: "Devis", href: "/portal#quotes", icon: "solar:document-text-linear" },
-  { label: "Factures", href: "/portal#invoices", icon: "solar:bill-list-linear" },
+  { label: "Commandes", href: "/portal/orders", icon: "solar:bag-4-linear" },
+  { label: "Devis", href: "/portal/quotes", icon: "solar:document-text-linear" },
+  { label: "Factures", href: "/portal/invoices", icon: "solar:bill-list-linear" },
   { label: "Favoris", href: "/wishlist", icon: "solar:heart-linear" },
 ]
 
@@ -40,10 +40,6 @@ export function UserPortalDropdown() {
   const { data: session } = useSession()
   const logout = useLogout()
   const isAuthenticated = Boolean(session?.authenticated)
-  const isInternalUser = Boolean(
-    session?.is_internal_user || session?.user?.is_internal_user
-  )
-  const backofficeUrl = session?.backoffice_url || "/odoo"
   const avatarUrl = session?.user?.avatar_url
   const initials = getInitials(session?.user?.name)
   const [avatarFailed, setAvatarFailed] = useState(false)
@@ -118,20 +114,6 @@ export function UserPortalDropdown() {
             </a>
           </DropdownMenuItem>
         ))}
-        {isInternalUser ? (
-          <>
-            <DropdownMenuSeparator className="my-2 bg-charcoal/8" />
-            <DropdownMenuItem asChild className="rounded-xl p-0">
-              <a
-                href={backofficeUrl}
-                className="flex w-full items-center gap-3 rounded-xl bg-charcoal px-3 py-2.5 text-sm font-medium text-ivory transition hover:bg-charcoal/90"
-              >
-                <AppIcon icon="solar:widget-5-linear" className="size-4 text-gold" />
-                Retour au backoffice
-              </a>
-            </DropdownMenuItem>
-          </>
-        ) : null}
         <DropdownMenuSeparator className="my-2 bg-charcoal/8" />
         <DropdownMenuItem
           className="rounded-xl px-3 py-2.5 text-sm text-warm-gray focus:text-charcoal"
