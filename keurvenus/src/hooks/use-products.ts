@@ -147,6 +147,8 @@ export function useStorefrontConfig() {
       getOdooStorefrontConfig().catch(() => ({
         paginationType: "pagination" as const,
         shopPageSize: 24,
+        authMode: "email_password" as const,
+        signupEnabled: true,
       })),
     placeholderData: (previousData) => previousData,
   })

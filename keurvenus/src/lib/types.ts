@@ -132,10 +132,13 @@ export type StorefrontFilters = {
 }
 
 export type StorefrontPaginationType = "pagination" | "infinite_scroll"
+export type StorefrontAuthMode = "email_password" | "phone_password"
 
 export type StorefrontConfig = {
   paginationType: StorefrontPaginationType
   shopPageSize: number
+  authMode: StorefrontAuthMode
+  signupEnabled: boolean
 }
 
 export type LookbookItem = {
@@ -316,6 +319,7 @@ export type StorefrontSession = {
   }
   cart_count: number
   wishlist_count: number
+  auth_mode?: StorefrontAuthMode
   account_on_checkout?: string
   payment_url: string
   portal_url: string

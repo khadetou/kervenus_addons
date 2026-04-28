@@ -89,11 +89,6 @@ async function handleStorefrontSessionRequest(request: Request, splat: string) {
     return buildSessionResponse(request)
   }
 
-  if (endpoint === "session/login" && request.method === "POST") {
-    const credentials = await request.json().catch(() => ({}))
-    return loginToOdoo(request, credentials.login, credentials.password)
-  }
-
   if (endpoint === "session/logout" && request.method === "POST") {
     return logoutFromOdoo(request)
   }
@@ -113,35 +108,6 @@ async function buildSessionResponse(request: Request) {
 
   return jsonResponse(
     { session: await mapSessionInfo(payload.result, request.headers.get("cookie")) },
-    response.status,
-    forwardedHeaders
-  )
-}
-
-async function loginToOdoo(request: Request, login?: string, password?: string) {
-  if (!login || !password) {
-    return jsonResponse({ error: "Email et mot de passe requis." }, 400)
-  }
-
-  const response = await callOdooJsonRpc("/web/session/authenticate", {
-    db: odooDatabase,
-    login,
-    password,
-  }, request)
-  const { payload } = response
-  const forwardedHeaders = response.headers
-  forwardedHeaders.set("content-type", "application/json")
-
-  if (!response.ok || payload.error || !payload.result?.uid) {
-    const message =
-      payload.error?.data?.message ||
-      payload.error?.message ||
-      "Identifiants invalides ou base de donnees indisponible."
-    return jsonResponse({ error: message }, response.ok ? 401 : response.status, forwardedHeaders)
-  }
-
-  return jsonResponse(
-    { session: await mapSessionInfo(payload.result, getSessionCookieHeader(forwardedHeaders)) },
     response.status,
     forwardedHeaders
   )
@@ -312,12 +278,6 @@ function getOdooImageContentType(url: URL, cookie: string): Promise<string | nul
     req.on("error", () => resolve(null))
     req.end()
   })
-}
-
-function getSessionCookieHeader(headers: Headers) {
-  const directCookie = headers.get("set-cookie") || ""
-  const match = directCookie.match(/session_id=[^;,]+/)
-  return match?.[0] || null
 }
 
 function emptySession() {

@@ -58,6 +58,15 @@ class Website(models.Model):
         default="pagination",
         required=True,
     )
+    theme_keurvenus_auth_mode = fields.Selection(
+        [
+            ("email_password", "Email + mot de passe"),
+            ("phone_password", "Nom + telephone + mot de passe"),
+        ],
+        string="Connexion boutique Kër Venus",
+        default="email_password",
+        required=True,
+    )
 
     def _theme_keurvenus_get_homepage_products(self, limit=4):
         self.ensure_one()

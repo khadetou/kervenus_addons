@@ -34,6 +34,7 @@ Wishlist et Auth Signup.
         "views/shop_templates.xml",
         "views/product_templates.xml",
         "views/product_variant_media_views.xml",
+        "views/res_config_settings_views.xml",
         "views/portal_user_password_views.xml",
         "views/cart_templates.xml",
         "views/wishlist_templates.xml",

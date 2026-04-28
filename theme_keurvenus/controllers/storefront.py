@@ -11,7 +11,7 @@ from markupsafe import Markup
 from werkzeug.exceptions import NotFound
 
 from odoo import fields, http
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessDenied, UserError, ValidationError
 from odoo.http import request, route
 from odoo.tools import escape_psql, html2plaintext as _html2plaintext
 
@@ -32,6 +32,7 @@ from odoo.addons.website_sale.controllers.main import WebsiteSale
 
 
 LOCAL_STOREFRONT_HOSTS = {"127.0.0.1", "localhost", "::1"}
+PHONE_LOGIN_PREFIX = "phone:"
 STOREFRONT_WRAPPER_URLS = {
     "local": "http://localhost:3000",
     "production": "https://www.keurvenus.sn",
@@ -221,6 +222,39 @@ class KeurVenusStorefrontController(http.Controller):
         return self._json({"config": self._storefront_config()})
 
     @http.route(
+        "/api/keurvenus/storefront/session/login",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+        save_session=True,
+    )
+    def session_login(self, **kwargs):
+        payload = self._json_payload()
+        password = payload.get("password") or ""
+        logins = self._logins_from_payload(payload)
+        if not logins or not password:
+            message = (
+                "Telephone et mot de passe requis."
+                if self._auth_mode() == "phone_password"
+                else "Email et mot de passe requis."
+            )
+            return self._json({"error": message}, status=400)
+
+        for login in logins:
+            try:
+                credential = {"login": login, "password": password, "type": "password"}
+                request.session.authenticate(request.env, credential)
+                self._save_storefront_session()
+                request.env.cr.commit()
+                return self._json({"session": self._storefront_session_payload()})
+            except AccessDenied:
+                continue
+
+        return self._json({"error": "Identifiants invalides."}, status=401)
+
+    @http.route(
         "/api/keurvenus/storefront/products",
         type="http",
         auth="public",
@@ -375,14 +409,22 @@ class KeurVenusStorefrontController(http.Controller):
     )
     def auth_signup(self, **kwargs):
         payload = self._json_payload()
+        auth_mode = self._auth_mode()
         name = " ".join((payload.get("name") or "").split())
         login = " ".join((payload.get("login") or payload.get("email") or "").split()).lower()
+        phone = self._normalize_phone(payload.get("phone") or payload.get("login") or "")
         password = payload.get("password") or ""
-        confirm_password = payload.get("confirm_password") or ""
+        confirm_password = payload.get("confirm_password") or password
 
         if request.env["res.users"].sudo()._get_signup_invitation_scope() != "b2c":
             return self._json({"error": "La creation de compte public n'est pas activee."}, status=403)
-        if not name or not login or not password:
+        if auth_mode == "phone_password":
+            if not name or not phone or not password:
+                return self._json({"error": "Nom, telephone et mot de passe sont requis."}, status=400)
+            login = self._login_from_phone(phone)
+            if self._find_user_by_phone(phone):
+                return self._json({"error": "Un compte existe deja avec ce numero de telephone."}, status=400)
+        elif not name or not login or not password:
             return self._json({"error": "Nom, e-mail et mot de passe sont requis."}, status=400)
         if password != confirm_password:
             return self._json({"error": "Les mots de passe ne correspondent pas."}, status=400)
@@ -390,19 +432,38 @@ class KeurVenusStorefrontController(http.Controller):
             return self._json({"error": "Le mot de passe doit contenir au moins 8 caracteres."}, status=400)
 
         try:
-            login, password = request.env["res.users"].sudo().signup({
+            signup_values = {
                 "name": name,
                 "login": login,
                 "email": login,
                 "password": password,
+            }
+            login, password = request.env["res.users"].sudo().signup({
+                **signup_values,
             })
+            if auth_mode == "phone_password":
+                user = self._find_user_by_login(login)
+                if user:
+                    display_phone = f"+{phone}" if phone.startswith("221") else phone
+                    partner_values = {
+                        "phone": display_phone,
+                        "email": False,
+                    }
+                    if "mobile" in user.partner_id._fields:
+                        partner_values["mobile"] = display_phone
+                    user.partner_id.sudo().write(partner_values)
             credential = {"login": login, "password": password, "type": "password"}
             request.session.authenticate(request.env, credential)
+            self._save_storefront_session()
             request.env.cr.commit()
         except Exception as exc:
             message = str(exc)
             if request.env["res.users"].sudo().with_context(active_test=False).search_count([("login", "=", login)], limit=1):
-                message = "Un compte existe deja avec cette adresse e-mail."
+                message = (
+                    "Un compte existe deja avec ce numero de telephone."
+                    if auth_mode == "phone_password"
+                    else "Un compte existe deja avec cette adresse e-mail."
+                )
             return self._json({"error": message or "Impossible de creer le compte."}, status=400)
 
         return self._json({"ok": True, "redirect_url": payload.get("redirect") or "/portal"})
@@ -1227,6 +1288,125 @@ class KeurVenusStorefrontController(http.Controller):
             return request.get_json_data() or {}
         except ValueError:
             return {}
+
+    def _auth_mode(self):
+        auth_mode = request.website.theme_keurvenus_auth_mode or "email_password"
+        if auth_mode not in {"email_password", "phone_password"}:
+            return "email_password"
+        return auth_mode
+
+    def _login_from_payload(self, payload):
+        logins = self._logins_from_payload(payload)
+        return logins[0] if logins else ""
+
+    def _logins_from_payload(self, payload):
+        if self._auth_mode() == "phone_password":
+            phone = self._normalize_phone(payload.get("phone") or payload.get("login") or "")
+            if not phone:
+                return []
+            users = self._find_users_by_phone(phone)
+            logins = [user.login for user in users if user.login]
+            generated_login = self._login_from_phone(phone)
+            if generated_login not in logins:
+                logins.append(generated_login)
+            return logins
+        login = " ".join((payload.get("login") or payload.get("email") or "").split()).lower()
+        return [login] if login else []
+
+    def _login_from_phone(self, phone):
+        normalized = self._normalize_phone(phone)
+        return f"{PHONE_LOGIN_PREFIX}{normalized}" if normalized else ""
+
+    def _normalize_phone(self, phone):
+        digits = re.sub(r"\D+", "", str(phone or ""))
+        if digits.startswith("00"):
+            digits = digits[2:]
+        if len(digits) == 9:
+            digits = f"221{digits}"
+        return digits
+
+    def _find_user_by_login(self, login):
+        return request.env["res.users"].sudo().with_context(active_test=False).search(
+            [("login", "=", login)],
+            limit=1,
+        )
+
+    def _find_user_by_phone(self, phone):
+        return self._find_users_by_phone(phone)[:1]
+
+    def _find_users_by_phone(self, phone):
+        normalized = self._normalize_phone(phone)
+        if not normalized:
+            return request.env["res.users"].browse([])
+
+        login_user = self._find_user_by_login(self._login_from_phone(normalized))
+
+        phone_tail = normalized[-9:]
+        domain = [("partner_id.phone", "ilike", phone_tail)]
+        if "mobile" in request.env["res.partner"]._fields:
+            domain = [
+                "|",
+                ("partner_id.phone", "ilike", phone_tail),
+                ("partner_id.mobile", "ilike", phone_tail),
+            ]
+        candidates = request.env["res.users"].sudo().with_context(active_test=False).search(
+            domain,
+            order="id asc",
+            limit=50,
+        )
+        users = login_user
+        for user in candidates:
+            partner = user.partner_id
+            partner_numbers = {self._normalize_phone(partner.phone)}
+            if "mobile" in partner._fields:
+                partner_numbers.add(self._normalize_phone(partner.mobile))
+            if normalized in partner_numbers and user not in users:
+                users |= user
+        return users
+
+    def _storefront_session_payload(self):
+        user = request.env.user
+        if user._is_public():
+            return {
+                "authenticated": False,
+                "user": None,
+                "cart_count": 0,
+                "wishlist_count": 0,
+                "payment_url": "/checkout",
+                "portal_url": "/portal",
+                "portal_links": [],
+                "signup_enabled": request.env["res.users"].sudo()._get_signup_invitation_scope() == "b2c",
+                "auth_mode": self._auth_mode(),
+                "is_internal_user": False,
+            }
+
+        partner = user.partner_id
+        partner_payload = {
+            "id": partner.id,
+            "name": partner.name,
+            "email": partner.email or None,
+            "phone": partner.phone or None,
+        }
+        if "mobile" in partner._fields:
+            partner_payload["mobile"] = partner.mobile or None
+        return {
+            "authenticated": True,
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "login": user.login,
+                "is_internal_user": user._is_internal(),
+                "partner": partner_payload,
+            },
+            "cart_count": 0,
+            "wishlist_count": 0,
+            "payment_url": "/checkout",
+            "portal_url": "/portal",
+            "portal_links": [],
+            "signup_enabled": request.env["res.users"].sudo()._get_signup_invitation_scope() == "b2c",
+            "auth_mode": self._auth_mode(),
+            "is_internal_user": user._is_internal(),
+        }
 
     def _save_storefront_session(self):
         request.session.can_save = True
@@ -2064,6 +2244,8 @@ class KeurVenusStorefrontController(http.Controller):
         return {
             "pagination_type": pagination_type,
             "page_size": int(website.shop_ppg or 24),
+            "auth_mode": self._auth_mode(),
+            "signup_enabled": request.env["res.users"].sudo()._get_signup_invitation_scope() == "b2c",
         }
 
 

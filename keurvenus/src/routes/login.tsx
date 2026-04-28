@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useStorefrontConfig } from "@/hooks/use-products"
 import { useLogin, useSession } from "@/hooks/use-session"
 import { getOdooResetPasswordUrl, getOdooSignupUrl } from "@/lib/odoo-api"
 
@@ -17,7 +18,10 @@ function LoginPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const { data: session } = useSession()
+  const { data: storefrontConfig } = useStorefrontConfig()
   const login = useLogin()
+  const authMode = storefrontConfig?.authMode ?? "email_password"
+  const usesPhoneAuth = authMode === "phone_password"
   const redirectTo =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("redirect") || "/portal"
@@ -30,7 +34,7 @@ function LoginPage() {
     const formData = new FormData(event.currentTarget)
     login.mutate(
       {
-        login: String(formData.get("email") ?? ""),
+        login: String(formData.get(usesPhoneAuth ? "phone" : "email") ?? ""),
         password: String(formData.get("password") ?? ""),
       },
       {
@@ -105,18 +109,20 @@ function LoginPage() {
           <CardContent className="p-5 pt-0">
             <form onSubmit={handleSubmit} className="grid gap-5">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor={usesPhoneAuth ? "phone" : "email"}>
+                  {usesPhoneAuth ? "Telephone" : "Email"}
+                </Label>
                 <div className="relative">
                   <AppIcon
-                    icon="solar:letter-linear"
+                    icon={usesPhoneAuth ? "solar:phone-linear" : "solar:letter-linear"}
                     className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-gold"
                   />
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
+                    id={usesPhoneAuth ? "phone" : "email"}
+                    name={usesPhoneAuth ? "phone" : "email"}
+                    type={usesPhoneAuth ? "tel" : "email"}
                     autoComplete="username"
-                    placeholder="nom@email.com"
+                    placeholder={usesPhoneAuth ? "77 000 00 00" : "nom@email.com"}
                     className="h-13 rounded-full border-charcoal/10 bg-white pl-12"
                     required
                   />
@@ -153,13 +159,15 @@ function LoginPage() {
                 </div>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <a
-                  href={resetPasswordUrl}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-warm-gray transition hover:text-charcoal"
-                >
-                  <AppIcon icon="solar:restart-circle-linear" className="size-4 text-gold" />
-                  Mot de passe oublié ?
-                </a>
+                {usesPhoneAuth ? <span /> : (
+                  <a
+                    href={resetPasswordUrl}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-warm-gray transition hover:text-charcoal"
+                  >
+                    <AppIcon icon="solar:restart-circle-linear" className="size-4 text-gold" />
+                    Mot de passe oublié ?
+                  </a>
+                )}
                 <a
                   href={signupUrl}
                   className="inline-flex items-center gap-2 text-sm font-medium text-charcoal transition hover:text-gold"
@@ -220,7 +228,7 @@ function LoginPage() {
             variant="outline"
             className="h-12 rounded-full border-white/20 bg-white/10 text-ivory hover:bg-white/15"
           >
-            <a href={resetPasswordUrl}>Mot de passe oublié</a>
+            {usesPhoneAuth ? <Link to="/contact">Besoin d’aide</Link> : <a href={resetPasswordUrl}>Mot de passe oublié</a>}
           </Button>
         </div>
       </aside>

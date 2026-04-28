@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useStorefrontConfig } from "@/hooks/use-products"
 import { signupWithOdoo } from "@/lib/odoo-api"
 
 export const Route = createFileRoute("/register")({ component: RegisterPage })
@@ -23,6 +24,9 @@ function RegisterPage() {
   const queryClient = useQueryClient()
   const redirectTo = getRedirectTo()
   const [showPassword, setShowPassword] = useState(false)
+  const { data: storefrontConfig } = useStorefrontConfig()
+  const authMode = storefrontConfig?.authMode ?? "email_password"
+  const usesPhoneAuth = authMode === "phone_password"
   const signup = useMutation({
     mutationFn: signupWithOdoo,
     onSuccess: (result) => {
@@ -43,9 +47,12 @@ function RegisterPage() {
     const formData = new FormData(event.currentTarget)
     signup.mutate({
       name: String(formData.get("name") ?? ""),
-      login: String(formData.get("email") ?? ""),
+      login: String(formData.get(usesPhoneAuth ? "phone" : "email") ?? ""),
+      phone: usesPhoneAuth ? String(formData.get("phone") ?? "") : undefined,
       password: String(formData.get("password") ?? ""),
-      confirm_password: String(formData.get("confirm_password") ?? ""),
+      confirm_password: usesPhoneAuth
+        ? String(formData.get("password") ?? "")
+        : String(formData.get("confirm_password") ?? ""),
       redirect: redirectTo,
     })
   }
@@ -94,24 +101,26 @@ function RegisterPage() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor={usesPhoneAuth ? "phone" : "email"}>
+                  {usesPhoneAuth ? "Telephone" : "Email"}
+                </Label>
                 <div className="relative">
                   <AppIcon
-                    icon="solar:letter-linear"
+                    icon={usesPhoneAuth ? "solar:phone-linear" : "solar:letter-linear"}
                     className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-gold"
                   />
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
+                    id={usesPhoneAuth ? "phone" : "email"}
+                    name={usesPhoneAuth ? "phone" : "email"}
+                    type={usesPhoneAuth ? "tel" : "email"}
                     autoComplete="username"
-                    placeholder="nom@email.com"
+                    placeholder={usesPhoneAuth ? "77 000 00 00" : "nom@email.com"}
                     className="h-13 rounded-full border-charcoal/10 bg-white pl-12"
                     required
                   />
                 </div>
               </div>
-              <div className="grid gap-2 md:grid-cols-2">
+              <div className={usesPhoneAuth ? "grid gap-2" : "grid gap-2 md:grid-cols-2"}>
                 <div className="grid gap-2">
                   <Label htmlFor="password">Mot de passe</Label>
                   <div className="relative">
@@ -142,18 +151,20 @@ function RegisterPage() {
                     </button>
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="confirm_password">Confirmation</Label>
-                  <Input
-                    id="confirm_password"
-                    name="confirm_password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="new-password"
-                    placeholder="Confirmer"
-                    className="h-13 rounded-full border-charcoal/10 bg-white px-5"
-                    required
-                  />
-                </div>
+                {usesPhoneAuth ? null : (
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirm_password">Confirmation</Label>
+                    <Input
+                      id="confirm_password"
+                      name="confirm_password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      placeholder="Confirmer"
+                      className="h-13 rounded-full border-charcoal/10 bg-white px-5"
+                      required
+                    />
+                  </div>
+                )}
               </div>
               <Button
                 type="submit"

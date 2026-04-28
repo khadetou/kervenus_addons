@@ -376,9 +376,13 @@ function mapOdooConfig(payload: Record<string, any>): StorefrontConfig {
   const config = payload.config || payload
   const paginationType =
     config.pagination_type === "infinite_scroll" ? "infinite_scroll" : "pagination"
+  const authMode =
+    config.auth_mode === "phone_password" ? "phone_password" : "email_password"
   return {
     paginationType,
     shopPageSize: Math.max(1, Number(config.page_size || config.shop_page_size || 24)),
+    authMode,
+    signupEnabled: config.signup_enabled !== false,
   }
 }
 
@@ -599,8 +603,9 @@ export async function loginWithOdoo(login: string, password: string) {
 export async function signupWithOdoo(data: {
   name: string
   login: string
+  phone?: string
   password: string
-  confirm_password: string
+  confirm_password?: string
   redirect?: string
 }) {
   return requestJson<{ ok: boolean; redirect_url?: string }>("/auth/signup", {

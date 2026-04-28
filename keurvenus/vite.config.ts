@@ -8,7 +8,7 @@ const config = defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
   server: {
-    allowedHosts: ["www.keurvenus.sn", "keurvenus.sn", "back.keurvenus.sn", "localhost"]
+    allowedHosts: ["www.keurvenus.sn", "keurvenus.sn", "back.keurvenus.sn", "localhost","detrimental-slicingly-florentina.ngrok-free.dev"]
   }
 })
 
