@@ -2,24 +2,9 @@
 
 import re
 from markupsafe import Markup
-from odoo import fields, models
+from odoo import models
 from odoo.tools import is_html_empty
 from odoo.tools.mail import html2plaintext
-
-
-class ProductTemplate(models.Model):
-    _inherit = 'product.template'
-
-    # Override description_sale to use Html field instead of Text
-    # This enables the HTML editor widget for rich text formatting
-    description_sale = fields.Html(
-        string='Sales Description',
-        translate=True,
-        help="A description of the Product that you want to communicate to your customers. "
-             "This description will be copied to every Sales Order, Delivery Order and Customer Invoice/Credit Note. "
-             "You can use HTML formatting like bullet points, bold, italics, etc. "
-             "Note: Block elements (like paragraphs) will be converted for PDF compatibility."
-    )
 
 
 class ProductProduct(models.Model):

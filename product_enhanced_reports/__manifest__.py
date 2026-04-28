@@ -1,7 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 {
     'name': 'Product Enhanced Reports',
-    'version': '19.0.1.3.0',
+    'version': '19.0.1.3.1',
     'category': 'Sales/Sales',
     'summary': 'Enhance product display in reports with bold names and HTML descriptions',
     'description': """
