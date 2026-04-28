@@ -1,0 +1,29 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.KEURVENUS_SSH_KEY }}" > ~/.ssh/keurvenus
+          chmod 600 ~/.ssh/keurvenus
+          ssh-keyscan -H "${{ secrets.KEURVENUS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        run: |
+          ssh -i ~/.ssh/keurvenus \
+            -o IdentitiesOnly=yes \
+            "${{ secrets.KEURVENUS_USER }}@${{ secrets.KEURVENUS_HOST }}" \
+            'sudo /usr/local/bin/deploy-keurvenus'

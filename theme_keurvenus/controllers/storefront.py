@@ -784,6 +784,8 @@ class KeurVenusStorefrontController(http.Controller):
                 "login_url": storefront_auth_url("/login", "/checkout"),
                 "signup_url": storefront_auth_url("/register", "/checkout"),
                 "cart": self._serialize_cart(order),
+                "customer": self._serialize_checkout_customer(order),
+                "requires_shipping_address": bool(order and order._has_deliverable_products()),
                 "delivery_methods": self._serialize_delivery_methods(order),
                 "payment_methods": self._serialize_payment_methods(order),
                 "coming_soon_payment_methods": self._coming_soon_payment_methods(order),
@@ -836,6 +838,44 @@ class KeurVenusStorefrontController(http.Controller):
         invoice = invoices[:1]
         return self._json({
             "order": self._serialize_order_result(order, invoice, payment_method),
+        })
+
+    @http.route(
+        "/api/keurvenus/storefront/checkout/customer",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        website=True,
+        csrf=False,
+        save_session=True,
+    )
+    def checkout_customer(self, **kwargs):
+        if request.env.user._is_public():
+            return self._json({
+                "error": "Veuillez vous connecter ou creer un compte pour finaliser votre commande.",
+                "login_url": storefront_auth_url("/login", "/checkout"),
+                "signup_url": storefront_auth_url("/register", "/checkout"),
+            }, status=401)
+
+        order = request.cart
+        if not order or not order.order_line:
+            return self._json({"error": "Votre panier est vide."}, status=400)
+
+        payload = self._json_payload()
+        try:
+            order = self._prepare_checkout_order(order)
+            self._update_checkout_partner(payload.get("customer") or {}, order)
+            order._recompute_cart()
+            self._save_storefront_session()
+        except (UserError, ValidationError) as exc:
+            return self._json({"error": str(exc)}, status=400)
+
+        return self._json({
+            "customer": self._serialize_checkout_customer(order),
+            "checkout": {
+                "cart": self._serialize_cart(order),
+                "selected_delivery_method_id": order.carrier_id.id if order and order.carrier_id else False,
+            },
         })
 
     @http.route(
@@ -1496,7 +1536,7 @@ class KeurVenusStorefrontController(http.Controller):
             "id": user.id,
             "name": user.name or "",
             "email": user.login or partner.email or "",
-            "phone": partner.phone or partner.mobile or "",
+            "phone": partner.phone or getattr(partner, "mobile", "") or "",
         }
 
     def _serialize_related_invoice(self, invoice):
@@ -1689,6 +1729,30 @@ class KeurVenusStorefrontController(http.Controller):
             if label.lower().split()[0] not in active_names:
                 soon.append({"id": icon, "name": label, "available": False, "label": "Bientôt"})
         return soon
+
+    def _serialize_checkout_customer(self, order):
+        partner = request.env.user.partner_id.sudo()
+        if order:
+            if order._has_deliverable_products() and order.partner_shipping_id:
+                partner = order.partner_shipping_id.sudo()
+            elif order.partner_invoice_id:
+                partner = order.partner_invoice_id.sudo()
+            elif order.partner_id:
+                partner = order.partner_id.sudo()
+
+        name = partner.name or request.env.user.name or ""
+        name_parts = name.split(" ", 1)
+        address = "\n".join(part for part in (partner.street, partner.street2) if part)
+        return {
+            "first_name": name_parts[0] if name_parts else "",
+            "last_name": name_parts[1] if len(name_parts) > 1 else "",
+            "name": name,
+            "email": partner.email or request.env.user.login or "",
+            "phone": partner.phone or getattr(partner, "mobile", "") or "",
+            "address": address,
+            "street": partner.street or address,
+            "city": partner.city or "Dakar",
+        }
 
     def _update_checkout_partner(self, values, order):
         name = " ".join(

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useCart } from "@/hooks/use-cart"
 import { useSession } from "@/hooks/use-session"
-import { OdooApiError, getOdooCheckout, submitOdooCheckout } from "@/lib/odoo-api"
+import { OdooApiError, getOdooCheckout, saveOdooCheckoutCustomer, submitOdooCheckout } from "@/lib/odoo-api"
 import { formatPrice } from "@/lib/format"
 import type {
   CheckoutDeliveryMethod,
@@ -18,6 +18,7 @@ import type {
   CheckoutPaymentMethod,
   CheckoutState,
   CheckoutSubmitPayload,
+  PortalPartner,
 } from "@/lib/types"
 
 export const Route = createFileRoute("/checkout")({ component: CheckoutPage })
@@ -40,8 +41,9 @@ function CheckoutPage() {
   })
   const [deliveryId, setDeliveryId] = useState<number | undefined>()
   const [paymentId, setPaymentId] = useState<string | undefined>()
-  const [step, setStep] = useState<CheckoutStep>("details")
+  const [detailsManuallyOpened, setDetailsManuallyOpened] = useState(false)
   const [customer, setCustomer] = useState<CustomerDraft>({ city: "Dakar" })
+  const [savedCustomer, setSavedCustomer] = useState<CustomerDraft | null>(null)
   const [orderResult, setOrderResult] = useState<CheckoutOrderResult | null>(null)
 
   useEffect(() => {
@@ -57,18 +59,13 @@ function CheckoutPage() {
   }, [checkout.data])
 
   useEffect(() => {
-    const partner = session.data?.user?.partner
-    if (!partner) return
-    const names = (partner.name || "").split(" ")
-    setCustomer((current) => ({
-      first_name: current.first_name || names[0] || "",
-      last_name: current.last_name || names.slice(1).join(" "),
-      email: current.email || partner.email || "",
-      phone: current.phone || partner.phone || "",
-      address: current.address || partner.street || "",
-      city: current.city || partner.city || "Dakar",
-    }))
-  }, [session.data?.user?.partner])
+    const sourceCustomer = checkout.data?.customer || customerFromSession(session.data?.user?.partner)
+    if (!sourceCustomer) return
+
+    const normalizedCustomer = normalizeCustomerDraft(sourceCustomer)
+
+    setCustomer((current) => mergeCustomerDrafts(current, normalizedCustomer))
+  }, [checkout.data, session.data?.user?.partner])
 
   const checkoutMutation = useMutation({
     mutationFn: submitOdooCheckout,
@@ -78,6 +75,19 @@ function CheckoutPage() {
       queryClient.invalidateQueries({ queryKey: ["cart"] })
       queryClient.invalidateQueries({ queryKey: ["checkout"] })
       queryClient.invalidateQueries({ queryKey: ["portal"] })
+    },
+  })
+  const customerMutation = useMutation({
+    mutationFn: saveOdooCheckoutCustomer,
+    onSuccess: (savedCustomer) => {
+      const normalizedCustomer = normalizeCustomerDraft(savedCustomer)
+      setCustomer(normalizedCustomer)
+      setSavedCustomer(normalizedCustomer)
+      queryClient.invalidateQueries({ queryKey: ["session"] })
+      queryClient.invalidateQueries({ queryKey: ["checkout"] })
+      queryClient.invalidateQueries({ queryKey: ["cart"] })
+      setDetailsManuallyOpened(false)
+      window.scrollTo({ top: 0, behavior: "smooth" })
     },
   })
 
@@ -96,16 +106,16 @@ function CheckoutPage() {
   const handleSubmit: FormSubmitHandler = (event) => {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
-    if (step === "details") {
-      setCustomer(readCustomerForm(form))
-      setStep("options")
-      window.scrollTo({ top: 0, behavior: "smooth" })
+    if (activeStep === "details") {
+      const nextCustomer = normalizeCustomerDraft(readCustomerForm(form))
+      setCustomer(nextCustomer)
+      customerMutation.mutate(nextCustomer)
       return
     }
     const payload: CheckoutSubmitPayload = {
       delivery_method_id: deliveryId,
       payment_method_id: paymentId,
-      customer,
+      customer: activeCustomer,
     }
     checkoutMutation.mutate(payload)
   }
@@ -124,19 +134,28 @@ function CheckoutPage() {
 
   const cart = checkout.data?.cart
   const hasItems = Boolean(cart?.lines.length)
-  const currentStepIndex = step === "details" ? 1 : 2
+  const requiresShippingAddress =
+    checkout.data?.requires_shipping_address ?? Boolean(checkout.data?.delivery_methods.length)
+  const persistedCustomer = savedCustomer || normalizeOptionalCustomer(checkout.data?.customer || customerFromSession(session.data?.user?.partner))
+  const hasPersistedCustomer = Boolean(
+    persistedCustomer && isCheckoutCustomerComplete(persistedCustomer, requiresShippingAddress)
+  )
+  const activeStep: CheckoutStep = detailsManuallyOpened || !hasPersistedCustomer ? "details" : "options"
+  const editableCustomer = persistedCustomer ? mergeCustomerDrafts(customer, persistedCustomer) : customer
+  const activeCustomer = persistedCustomer || editableCustomer
+  const currentStepIndex = activeStep === "details" ? 1 : 2
 
   return (
-    <main className="mx-auto mt-10 grid w-[min(1280px,calc(100vw-32px))] gap-6 pb-14 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="overflow-hidden rounded-[2.2rem] border border-white/75 bg-white/76 p-5 shadow-luxury backdrop-blur md:p-8">
-        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+    <main className="mx-auto mt-3 grid w-[min(1280px,calc(100vw-20px))] max-w-full gap-4 overflow-x-hidden pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:w-[min(1280px,calc(100vw-32px))] md:mt-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6 lg:pb-14">
+      <section className="max-w-full overflow-hidden rounded-[1.45rem] border border-white/75 bg-white/82 p-4 shadow-luxury backdrop-blur md:rounded-[2.2rem] md:p-8">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-gold">commande sécurisée</p>
-            <h1 className="mt-3 font-serif text-5xl leading-none md:text-7xl">
-              {step === "details" ? "Finaliser la commande" : "Livraison & paiement"}
+            <h1 className="mt-2 font-serif text-[2.45rem] leading-none md:mt-3 md:text-7xl">
+              {activeStep === "details" ? "Finaliser la commande" : "Livraison & paiement"}
             </h1>
-            <p className="mt-4 max-w-2xl text-warm-gray">
-              {step === "details"
+            <p className="mt-3 hidden max-w-2xl text-sm leading-6 text-warm-gray sm:block md:mt-4 md:text-base">
+              {activeStep === "details"
                 ? "Confirmez vos coordonnées avant de choisir la livraison et le paiement."
                 : "Les livraisons, retraits et paiements affichés viennent directement du backoffice Odoo."}
             </p>
@@ -153,22 +172,33 @@ function CheckoutPage() {
             </Button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-8 grid gap-7">
-            {step === "details" ? (
+          <form onSubmit={handleSubmit} className="mt-5 grid gap-5 md:mt-8 md:gap-7">
+            {activeStep === "details" ? (
               <>
-                <CustomerFields customer={customer} onChange={setCustomer} />
+                <CustomerFields customer={editableCustomer} onChange={setCustomer} />
+                {customerMutation.error ? (
+                  <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {customerMutation.error.message}
+                  </p>
+                ) : null}
                 <Button
                   type="submit"
-                  className="h-12 rounded-full bg-charcoal px-8 text-ivory hover:bg-charcoal/90"
+                  className="hidden h-12 rounded-full bg-charcoal px-8 text-ivory hover:bg-charcoal/90 lg:inline-flex"
+                  disabled={customerMutation.isPending}
+                  aria-busy={customerMutation.isPending}
                 >
-                  Continuer vers la livraison
+                  {customerMutation.isPending ? "Enregistrement..." : "Continuer vers la livraison"}
                   <AppIcon icon="solar:arrow-right-linear" className="size-4" />
                 </Button>
               </>
             ) : (
               <>
-                <CustomerPreview customer={customer} onEdit={() => setStep("details")} />
-                <BackofficeSettingsPanel checkout={checkout.data} />
+                <CustomerPreview
+                  customer={activeCustomer}
+                  onEdit={() => {
+                    setDetailsManuallyOpened(true)
+                  }}
+                />
                 <OptionSection
                   title="Mode de livraison"
                   icon="solar:delivery-linear"
@@ -207,12 +237,14 @@ function CheckoutPage() {
                   </p>
                 ) : null}
 
-                <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+                <div className="hidden gap-3 lg:grid lg:grid-cols-[auto_1fr]">
                   <Button
                     type="button"
                     variant="outline"
                     className="h-12 rounded-full border-charcoal/10 bg-white px-7 hover:bg-cream"
-                    onClick={() => setStep("details")}
+                    onClick={() => {
+                      setDetailsManuallyOpened(true)
+                    }}
                   >
                     Retour
                   </Button>
@@ -233,6 +265,22 @@ function CheckoutPage() {
                 </div>
               </>
             )}
+            <MobileCheckoutAction
+              activeStep={activeStep}
+              cart={cart}
+              customerPending={customerMutation.isPending}
+              checkoutPending={checkoutMutation.isPending}
+              disabled={
+                activeStep === "options" &&
+                (checkout.isLoading ||
+                  !hasItems ||
+                  !paymentId ||
+                  Boolean(checkout.data?.delivery_methods.length && !deliveryId))
+              }
+              onBack={() => {
+                setDetailsManuallyOpened(true)
+              }}
+            />
           </form>
         )}
       </section>
@@ -242,14 +290,72 @@ function CheckoutPage() {
 }
 
 function readCustomerForm(form: FormData): CustomerDraft {
-  return {
+  return normalizeCustomerDraft({
     first_name: String(form.get("first_name") || ""),
     last_name: String(form.get("last_name") || ""),
     email: String(form.get("email") || ""),
     phone: String(form.get("phone") || ""),
     address: String(form.get("address") || ""),
     city: String(form.get("city") || "Dakar"),
+  })
+}
+
+function customerFromSession(partner?: PortalPartner | null): CustomerDraft | null {
+  if (!partner) return null
+  const address = [partner.street, partner.street2].filter(Boolean).join("\n")
+  return {
+    name: partner.name || "",
+    email: partner.email || "",
+    phone: partner.phone || "",
+    address,
+    city: partner.city || "Dakar",
   }
+}
+
+function normalizeCustomerDraft(customer: CustomerDraft): CustomerDraft {
+  const fullName = String(customer.name || "").trim()
+  const firstName = String(customer.first_name || "").trim()
+  const lastName = String(customer.last_name || "").trim()
+  const splitName = fullName && !firstName ? fullName.split(" ") : []
+  return {
+    ...customer,
+    first_name: firstName || splitName[0] || "",
+    last_name: lastName || splitName.slice(1).join(" "),
+    name: fullName || [firstName, lastName].filter(Boolean).join(" "),
+    email: String(customer.email || "").trim(),
+    phone: String(customer.phone || "").trim(),
+    address: String(customer.address || customer.street || "").trim(),
+    street: String(customer.street || customer.address || "").trim(),
+    city: String(customer.city || "Dakar").trim() || "Dakar",
+  }
+}
+
+function normalizeOptionalCustomer(customer?: CustomerDraft | null): CustomerDraft | null {
+  return customer ? normalizeCustomerDraft(customer) : null
+}
+
+function mergeCustomerDrafts(current: CustomerDraft, incoming: CustomerDraft): CustomerDraft {
+  return normalizeCustomerDraft({
+    first_name: current.first_name || incoming.first_name || "",
+    last_name: current.last_name || incoming.last_name || "",
+    name: current.name || incoming.name || "",
+    email: current.email || incoming.email || "",
+    phone: current.phone || incoming.phone || "",
+    address: current.address || incoming.address || incoming.street || "",
+    street: current.street || incoming.street || incoming.address || "",
+    city: current.city || incoming.city || "Dakar",
+  })
+}
+
+function isCheckoutCustomerComplete(customer: CustomerDraft, requiresShippingAddress: boolean) {
+  const normalized = normalizeCustomerDraft(customer)
+  const hasName = Boolean(normalized.name || normalized.first_name || normalized.last_name)
+  return Boolean(
+    hasName &&
+      normalized.email &&
+      normalized.phone &&
+      (!requiresShippingAddress || normalized.address || normalized.street)
+  )
 }
 
 function CustomerFields({
@@ -263,7 +369,7 @@ function CustomerFields({
     onChange({ ...customer, [key]: value })
   }
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-2 md:gap-4">
       <Field id="first_name" label="Prénom" value={customer.first_name || ""} onChange={(value) => update("first_name", value)} required />
       <Field id="last_name" label="Nom" value={customer.last_name || ""} onChange={(value) => update("last_name", value)} required />
       <Field id="email" label="E-mail" type="email" value={customer.email || ""} onChange={(value) => update("email", value)} required />
@@ -276,7 +382,7 @@ function CustomerFields({
           name="address"
           value={customer.address || ""}
           onChange={(event) => update("address", event.target.value)}
-          className="min-h-32 rounded-2xl border-charcoal/10 bg-ivory/80 shadow-[inset_0_1px_0_rgba(255,255,255,.65)]"
+          className="min-h-28 rounded-[1.15rem] border-charcoal/10 bg-ivory/80 shadow-[inset_0_1px_0_rgba(255,255,255,.65)] md:min-h-32 md:rounded-2xl"
           required
         />
       </div>
@@ -309,7 +415,7 @@ function Field({
         value={value}
         onChange={(event) => onChange?.(event.target.value)}
         required={required}
-        className="h-12 rounded-2xl border-charcoal/10 bg-ivory/80 shadow-[inset_0_1px_0_rgba(255,255,255,.65)]"
+        className="h-12 rounded-[1.15rem] border-charcoal/10 bg-ivory/80 text-base shadow-[inset_0_1px_0_rgba(255,255,255,.65)] md:rounded-2xl"
       />
     </div>
   )
@@ -317,7 +423,7 @@ function Field({
 
 function CheckoutProgress({ current }: { current: number }) {
   return (
-    <div className="grid gap-2 rounded-[1.35rem] border border-charcoal/8 bg-ivory/72 p-2 text-sm font-semibold text-charcoal shadow-soft sm:min-w-64">
+    <div className="grid grid-cols-2 gap-1.5 rounded-full border border-charcoal/8 bg-ivory/72 p-1.5 text-xs font-semibold text-charcoal shadow-soft md:min-w-64 md:grid-cols-1 md:gap-2 md:rounded-[1.35rem] md:p-2 md:text-sm">
       {[
         ["1", "Coordonnées"],
         ["2", "Livraison & paiement"],
@@ -326,14 +432,14 @@ function CheckoutProgress({ current }: { current: number }) {
         return (
           <span
             key={index}
-            className={`flex items-center gap-2 rounded-full px-3 py-2 ${
+            className={`flex min-w-0 items-center justify-center gap-1.5 rounded-full px-2 py-2 md:justify-start md:gap-2 md:px-3 ${
               active ? "bg-charcoal text-ivory" : "text-warm-gray"
             }`}
           >
-            <span className={`grid size-6 place-items-center rounded-full text-xs ${active ? "bg-white/12" : "bg-white"}`}>
+            <span className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] md:size-6 md:text-xs ${active ? "bg-white/12" : "bg-white"}`}>
               {index}
             </span>
-            {label}
+            <span className="truncate">{label}</span>
           </span>
         )
       })}
@@ -344,94 +450,24 @@ function CheckoutProgress({ current }: { current: number }) {
 function CustomerPreview({ customer, onEdit }: { customer: CustomerDraft; onEdit: () => void }) {
   const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(" ")
   return (
-    <section className="rounded-[1.6rem] border border-charcoal/8 bg-ivory/74 p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <section className="overflow-hidden rounded-[1.25rem] border border-charcoal/8 bg-ivory/74 p-3.5 md:rounded-[1.6rem] md:p-4">
+      <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-[0.2em] text-gold">coordonnées</p>
-          <h2 className="mt-2 font-serif text-3xl leading-none">{fullName || "Client Kër Venus"}</h2>
-          <p className="mt-2 truncate text-sm text-warm-gray">{customer.email} · {customer.phone}</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-gold md:text-xs md:tracking-[0.2em]">coordonnées</p>
+          <h2 className="mt-1.5 truncate font-serif text-2xl leading-none md:mt-2 md:text-3xl">{fullName || "Client Kër Venus"}</h2>
+          <p className="mt-2 truncate text-xs text-warm-gray md:text-sm">{customer.email} · {customer.phone}</p>
           <p className="mt-1 line-clamp-1 text-sm text-warm-gray">{customer.address || customer.city}</p>
         </div>
         <Button
           type="button"
           variant="outline"
-          className="h-10 rounded-full border-charcoal/10 bg-white px-5 hover:bg-cream"
+          className="h-10 w-full shrink-0 rounded-full border-charcoal/10 bg-white px-4 text-sm hover:bg-cream sm:w-auto md:px-5"
           onClick={onEdit}
         >
           Modifier
         </Button>
       </div>
     </section>
-  )
-}
-
-function BackofficeSettingsPanel({ checkout }: { checkout?: CheckoutState }) {
-  if (!checkout?.settings) return null
-  const settings = checkout.settings
-  const activePayments = checkout.payment_methods.filter((method) => method.available)
-  const pickupMethods = checkout.delivery_methods.filter((method) => method.is_pickup)
-  const deliveryMethods = checkout.delivery_methods.filter((method) => !method.is_pickup)
-  return (
-    <section className="grid gap-3 rounded-[1.6rem] border border-gold/12 bg-white/72 p-4 shadow-soft md:grid-cols-3">
-      <ConfigPill
-        icon="solar:file-text-linear"
-        label="Facturation"
-        value={
-          settings.invoice_on_confirmation
-            ? "Facture à la confirmation"
-            : settings.invoice_policy === "delivery"
-              ? "Facture après livraison"
-              : "Facture selon produits"
-        }
-      />
-      <ConfigPill
-        icon="solar:card-2-linear"
-        label="Paiement actif"
-        value={activePayments.length ? activePayments.map((method) => method.name).join(", ") : "Aucun paiement actif"}
-      />
-      <ConfigPill
-        icon="solar:delivery-linear"
-        label="Livraison"
-        value={`${deliveryMethods.length} livraison${deliveryMethods.length > 1 ? "s" : ""} · ${pickupMethods.length} retrait${pickupMethods.length > 1 ? "s" : ""}`}
-      />
-      <ConfigPill
-        icon="solar:user-check-linear"
-        label="Compte client"
-        value={
-          settings.account_on_checkout === "mandatory"
-            ? "Obligatoire"
-            : settings.account_on_checkout === "disabled"
-              ? "Invité uniquement"
-              : "Facultatif"
-        }
-      />
-      <ConfigPill
-        icon="solar:tag-price-linear"
-        label="Prix"
-        value={settings.show_line_subtotals_tax_selection === "tax_included" ? "Taxes comprises" : "Hors taxes"}
-      />
-      <ConfigPill
-        icon="solar:shop-linear"
-        label="Accès boutique"
-        value={settings.ecommerce_access === "logged_in" ? "Utilisateurs connectés" : "Tous les utilisateurs"}
-      />
-    </section>
-  )
-}
-
-function ConfigPill({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div className="flex min-w-0 gap-3 rounded-[1.15rem] border border-charcoal/6 bg-ivory/72 p-3">
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gold/12 text-gold">
-        <AppIcon icon={icon} className="size-5" />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-warm-gray">
-          {label}
-        </span>
-        <span className="mt-1 block truncate text-sm font-semibold text-charcoal">{value}</span>
-      </span>
-    </div>
   )
 }
 
@@ -448,12 +484,12 @@ function OptionSection({
 }) {
   const hasChildren = Boolean(children && (!Array.isArray(children) || children.some(Boolean)))
   return (
-    <section className="rounded-[1.8rem] border border-charcoal/8 bg-ivory/74 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.68)] md:p-5">
-      <div className="mb-4 flex items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-full bg-gold/14 text-gold">
-          <AppIcon icon={icon} className="size-5" />
+    <section className="max-w-full overflow-hidden rounded-[1.35rem] border border-charcoal/8 bg-ivory/74 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.68)] md:rounded-[1.8rem] md:p-5">
+      <div className="mb-3 flex items-center gap-2.5 md:mb-4 md:gap-3">
+        <span className="grid size-9 place-items-center rounded-full bg-gold/14 text-gold md:size-10">
+          <AppIcon icon={icon} className="size-[18px] md:size-5" />
         </span>
-        <h2 className="font-serif text-3xl leading-none">{title}</h2>
+        <h2 className="font-serif text-[1.7rem] leading-none md:text-3xl">{title}</h2>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {hasChildren ? children : (
@@ -480,25 +516,25 @@ function DeliveryOption({
       type="button"
       onClick={onSelect}
       disabled={method.available === false}
-      className={`group min-h-[142px] rounded-[1.45rem] border p-4 text-left transition ${
+      className={`group min-h-[112px] w-full max-w-full overflow-hidden rounded-[1.15rem] border p-3.5 text-left transition active:scale-[0.99] md:min-h-[142px] md:rounded-[1.45rem] md:p-4 ${
         selected
           ? "border-charcoal bg-charcoal text-ivory shadow-soft"
           : "border-charcoal/10 bg-white/82 text-charcoal hover:-translate-y-0.5 hover:border-gold/35 hover:bg-white hover:shadow-soft"
       } ${method.available === false ? "opacity-55" : ""}`}
     >
-      <span className="flex h-full flex-col justify-between gap-5">
-        <span className="flex items-start justify-between gap-4">
+      <span className="flex h-full flex-col justify-between gap-4 md:gap-5">
+        <span className="flex items-start justify-between gap-3 md:gap-4">
           <span className="min-w-0">
-            <span className="block text-base font-semibold leading-tight">{method.name}</span>
-            <span className={`mt-2 block max-w-[22rem] text-sm leading-5 ${selected ? "text-ivory/68" : "text-warm-gray"}`}>
+            <span className="block text-sm font-semibold leading-tight md:text-base">{method.name}</span>
+            <span className={`mt-1.5 block max-w-full break-words text-xs leading-5 md:mt-2 md:max-w-[22rem] md:text-sm ${selected ? "text-ivory/68" : "text-warm-gray"}`}>
               {method.is_pickup ? "Retrait en boutique" : method.description || "Méthode configurée dans Odoo"}
             </span>
           </span>
-          <span className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-bold ${selected ? "bg-white/12 text-ivory" : "bg-cream text-charcoal"}`}>
+          <span className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold md:px-3.5 md:py-2 md:text-xs ${selected ? "bg-white/12 text-ivory" : "bg-cream text-charcoal"}`}>
             {method.price_formatted || formatPrice(method.price)}
           </span>
         </span>
-        <span className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] ${selected ? "text-champagne" : "text-gold"}`}>
+        <span className={`flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] md:text-xs md:tracking-[0.16em] ${selected ? "text-champagne" : "text-gold"}`}>
           <AppIcon icon={selected ? "solar:check-circle-bold" : "solar:map-point-wave-linear"} className="size-4" />
           {selected
             ? "Sélectionné"
@@ -528,7 +564,7 @@ function PaymentOption({
       type="button"
       onClick={onSelect}
       disabled={disabled}
-      className={`group min-h-[96px] rounded-[1.35rem] border p-4 text-left transition ${
+      className={`group min-h-[82px] w-full max-w-full overflow-hidden rounded-[1.15rem] border p-3.5 text-left transition active:scale-[0.99] md:min-h-[96px] md:rounded-[1.35rem] md:p-4 ${
         selected
           ? "border-charcoal bg-charcoal text-ivory shadow-soft"
           : "border-charcoal/10 bg-white/82 text-charcoal hover:-translate-y-0.5 hover:border-gold/35 hover:bg-white hover:shadow-soft"
@@ -536,12 +572,12 @@ function PaymentOption({
     >
       <span className="flex h-full items-center justify-between gap-4">
         <span className="min-w-0">
-          <span className="block truncate text-base font-semibold">{method.name}</span>
-          <span className={`mt-1 block truncate text-sm ${selected ? "text-ivory/68" : "text-warm-gray"}`}>
+          <span className="block truncate text-sm font-semibold md:text-base">{method.name}</span>
+          <span className={`mt-1 block truncate text-xs md:text-sm ${selected ? "text-ivory/68" : "text-warm-gray"}`}>
             {method.provider_name || method.label || "Bientôt disponible"}
           </span>
         </span>
-        <span className={`grid size-9 shrink-0 place-items-center rounded-full ${selected ? "bg-white/12" : "bg-cream"}`}>
+        <span className={`grid size-8 shrink-0 place-items-center rounded-full md:size-9 ${selected ? "bg-white/12" : "bg-cream"}`}>
           <AppIcon
             icon={method.available ? "solar:check-circle-linear" : "solar:clock-circle-linear"}
             className="size-5 text-gold"
@@ -558,7 +594,7 @@ function CheckoutSummary({ checkout }: { checkout?: CheckoutState }) {
   if (!cart?.lines.length) return <OrderSummary checkoutCta={false} />
 
   return (
-    <aside className="h-fit overflow-hidden rounded-[2rem] border border-white/75 bg-white/76 p-5 shadow-luxury backdrop-blur lg:sticky lg:top-36">
+    <aside className="hidden h-fit overflow-hidden rounded-[2rem] border border-white/75 bg-white/76 p-5 shadow-luxury backdrop-blur lg:sticky lg:top-36 lg:block">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-serif text-4xl leading-none">Résumé</h2>
         <span className="rounded-full bg-ivory px-3 py-1 text-xs font-semibold text-charcoal">
@@ -595,6 +631,65 @@ function SummaryRow({ label, value, strong }: { label: string; value: string; st
     <div className={`flex items-center justify-between gap-4 ${strong ? "text-base font-bold" : ""}`}>
       <span className="text-warm-gray">{label}</span>
       <span className="whitespace-nowrap text-right">{value}</span>
+    </div>
+  )
+}
+
+function MobileCheckoutAction({
+  activeStep,
+  cart,
+  customerPending,
+  checkoutPending,
+  disabled,
+  onBack,
+}: {
+  activeStep: CheckoutStep
+  cart?: CheckoutState["cart"]
+  customerPending: boolean
+  checkoutPending: boolean
+  disabled: boolean
+  onBack: () => void
+}) {
+  const total = cart?.formatted?.total || formatPrice(cart?.total || 0)
+  const itemCount = cart?.itemCount || 0
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-charcoal/10 bg-ivory/92 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-18px_50px_rgba(38,29,20,0.14)] backdrop-blur-2xl lg:hidden">
+      <div className="mx-auto grid max-w-md gap-2">
+        <div className="flex items-center justify-between gap-3 px-1">
+          <span className="text-xs font-medium text-warm-gray">
+            {itemCount} article{itemCount > 1 ? "s" : ""}
+          </span>
+          <span className="font-semibold text-charcoal">{total}</span>
+        </div>
+        <div className={activeStep === "options" ? "grid grid-cols-[44px_1fr] gap-2" : "grid"}>
+          {activeStep === "options" ? (
+            <Button
+              type="button"
+              variant="outline"
+              aria-label="Retour aux coordonnées"
+              className="h-12 rounded-full border-charcoal/10 bg-white p-0 hover:bg-cream"
+              onClick={onBack}
+            >
+              <AppIcon icon="solar:arrow-left-linear" className="size-5" />
+            </Button>
+          ) : null}
+          <Button
+            type="submit"
+            className="h-12 rounded-full bg-charcoal text-ivory shadow-soft hover:bg-charcoal/90"
+            disabled={customerPending || checkoutPending || disabled}
+            aria-busy={customerPending || checkoutPending}
+          >
+            {activeStep === "details"
+              ? customerPending
+                ? "Enregistrement..."
+                : "Continuer"
+              : checkoutPending
+                ? "Création..."
+                : "Commander"}
+            <AppIcon icon="solar:arrow-right-linear" className="size-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

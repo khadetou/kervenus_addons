@@ -514,6 +514,8 @@ function mapOdooCheckout(payload: Record<string, any>): CheckoutState {
     login_url: payload.login_url || "/login?redirect=/checkout",
     signup_url: payload.signup_url || "/register?redirect=/checkout",
     cart: mapOdooCart(payload.cart),
+    customer: payload.customer || undefined,
+    requires_shipping_address: Boolean(payload.requires_shipping_address),
     delivery_methods: deliveryMethods.map((method: Record<string, any>) => ({
       ...method,
       id: Number(method.id),
@@ -759,6 +761,28 @@ export async function submitOdooCheckout(data: CheckoutSubmitPayload) {
     body: JSON.stringify(data),
   })
   return mapOdooCheckoutOrderResult(payload.order)
+}
+
+export async function saveOdooCheckoutCustomer(customer: CheckoutSubmitPayload["customer"]) {
+  const payload = await requestJson<{ customer: CheckoutSubmitPayload["customer"] }>("/checkout/customer", {
+    method: "POST",
+    body: JSON.stringify({ customer }),
+  })
+  return normalizeCheckoutCustomerPayload(payload.customer)
+}
+
+function normalizeCheckoutCustomerPayload(customer: CheckoutSubmitPayload["customer"] = {}) {
+  return {
+    ...customer,
+    first_name: cleanHtmlText(customer.first_name),
+    last_name: cleanHtmlText(customer.last_name),
+    name: cleanHtmlText(customer.name),
+    email: cleanHtmlText(customer.email),
+    phone: cleanHtmlText(customer.phone),
+    address: cleanHtmlText(customer.address),
+    street: cleanHtmlText(customer.street),
+    city: cleanHtmlText(customer.city) || "Dakar",
+  }
 }
 
 export async function getOdooWishlist() {

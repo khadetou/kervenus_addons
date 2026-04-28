@@ -241,6 +241,8 @@ export type CheckoutState = {
   login_url: string
   signup_url: string
   cart: CartSummary
+  customer?: CheckoutSubmitPayload["customer"]
+  requires_shipping_address?: boolean
   delivery_methods: CheckoutDeliveryMethod[]
   payment_methods: CheckoutPaymentMethod[]
   coming_soon_payment_methods?: CheckoutPaymentMethod[]
