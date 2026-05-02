@@ -152,7 +152,7 @@ function CheckoutPage() {
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-gold">commande sécurisée</p>
             <h1 className="mt-2 font-serif text-[2.45rem] leading-none md:mt-3 md:text-7xl">
-              {activeStep === "details" ? "Finaliser la commande" : "Livraison & paiement"}
+              {activeStep === "details" ? "Commander" : "Livraison & paiement"}
             </h1>
             <p className="mt-3 hidden max-w-2xl text-sm leading-6 text-warm-gray sm:block md:mt-4 md:text-base">
               {activeStep === "details"
@@ -704,7 +704,7 @@ function AuthRedirecting() {
         </h1>
         <p className="mt-4 max-w-2xl text-warm-gray">
           Vous allez être redirigé vers l'accès client. Après connexion ou création de compte,
-          vous reviendrez automatiquement au checkout.
+          vous reviendrez automatiquement à votre commande.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild className="h-12 rounded-full bg-charcoal px-7 text-ivory">

@@ -36,7 +36,7 @@ export function OrderSummary({ checkoutCta = true }: { checkoutCta?: boolean }) 
       {checkoutCta && (
         <Button asChild className="mt-6 h-12 w-full rounded-full bg-charcoal text-ivory hover:bg-charcoal/90">
           <Link to="/checkout">
-            Passer au paiement
+            Commander
             <AppIcon icon="solar:arrow-right-linear" className="size-4" />
           </Link>
         </Button>

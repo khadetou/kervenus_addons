@@ -79,7 +79,7 @@ export function CartDrawer() {
             </Button>
             <Button asChild className="h-11 rounded-full bg-gold text-charcoal hover:bg-gold/85">
               <Link to="/checkout" onClick={closeCart}>
-                Checkout
+                Commander
               </Link>
             </Button>
           </div>
