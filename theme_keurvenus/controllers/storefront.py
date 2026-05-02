@@ -889,6 +889,7 @@ class KeurVenusStorefrontController(http.Controller):
             if order.state in ("draft", "sent"):
                 order._validate_order()
             invoices = self._create_unpaid_invoices(order)
+            self._notify_internal_users_new_order(order, payment_method)
             request.session["sale_last_order_id"] = order.id
             request.website.sale_reset()
             request.cart = request.env["sale.order"].sudo()
@@ -2025,6 +2026,34 @@ class KeurVenusStorefrontController(http.Controller):
         if draft_invoices:
             draft_invoices.action_post()
         return invoices
+
+    def _notify_internal_users_new_order(self, order, payment_method):
+        users = request.env["res.users"].sudo().search([
+            ("active", "=", True),
+            ("share", "=", False),
+            ("partner_id", "!=", False),
+        ])
+        partners = users.mapped("partner_id").filtered("active")
+        if not partners:
+            return
+
+        order_url = f"/web#id={order.id}&model=sale.order&view_type=form"
+        body = Markup(
+            "<p><strong>Nouvelle commande storefront</strong></p>"
+            "<ul>"
+            f"<li>Commande: <a href=\"{xml_escape(order_url)}\">{xml_escape(order.name)}</a></li>"
+            f"<li>Client: {xml_escape(order.partner_id.display_name or '')}</li>"
+            f"<li>Total: {xml_escape(self._format_money_text(order.amount_total, order.currency_id))}</li>"
+            f"<li>Paiement: {xml_escape(payment_method['name'])}</li>"
+            "</ul>"
+        )
+        order.message_post(
+            body=body,
+            message_type="comment",
+            partner_ids=partners.ids,
+            subject=f"Nouvelle commande {order.name}",
+            subtype_xmlid="mail.mt_comment",
+        )
 
     def _serialize_order_result(self, order, invoice, payment_method):
         return {
