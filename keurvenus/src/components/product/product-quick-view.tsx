@@ -35,7 +35,7 @@ export function ProductQuickView({ product }: { product: Product }) {
   const [zoomOpen, setZoomOpen] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const thumbnailRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const { addProduct, openCart } = useCart()
+  const { addProduct } = useCart()
   const { isFavorite, toggleProduct } = useWishlist()
 
   const images = product.images.length ? product.images : [""]
@@ -102,7 +102,6 @@ export function ProductQuickView({ product }: { product: Product }) {
 
   function handleAddToCart() {
     addProduct(product)
-    openCart()
   }
 
   return (

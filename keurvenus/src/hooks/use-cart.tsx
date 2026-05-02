@@ -72,7 +72,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       return [...current, { product, quantity }]
     })
-    setCartOpen(true)
     void addOdooCartLine(product, quantity)
       .then((cart) => setLines(cart.lines))
       .catch(() => undefined)

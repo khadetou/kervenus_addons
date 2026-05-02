@@ -15,7 +15,7 @@ import { gsap, prefersReducedMotion, useGSAP } from "@/lib/animations"
 
 export function SiteHeader() {
   const headerRef = useRef<HTMLElement>(null)
-  const { itemCount, openCart } = useCart()
+  const { itemCount } = useCart()
   const { count: wishlistCount, openWishlist } = useWishlist()
 
   useGSAP(
@@ -105,35 +105,37 @@ export function SiteHeader() {
                 </Button>
               ) : null}
               <Button
-                type="button"
-                onClick={openCart}
+                asChild
                 variant="ghost"
                 size="icon-lg"
                 className="relative rounded-full text-charcoal transition hover:-translate-y-0.5 hover:bg-charcoal hover:text-ivory"
-                aria-label="Ouvrir le panier"
+                aria-label="Voir le panier"
               >
-                <AppIcon icon="solar:bag-4-linear" className="size-5" />
+                <Link to="/cart">
+                  <AppIcon icon="solar:bag-4-linear" className="size-5" />
+                  {itemCount > 0 && (
+                    <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-gold text-[11px] font-bold text-charcoal">
+                      {itemCount}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+            </div>
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="relative rounded-full border-charcoal/10 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition hover:-translate-y-0.5 hover:border-gold/30 hover:bg-white md:hidden"
+              aria-label="Voir le panier"
+            >
+              <Link to="/cart">
+                <AppIcon icon="solar:bag-4-linear" className="size-4" />
                 {itemCount > 0 && (
                   <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-gold text-[11px] font-bold text-charcoal">
                     {itemCount}
                   </span>
                 )}
-              </Button>
-            </div>
-            <Button
-              type="button"
-              onClick={openCart}
-              variant="outline"
-              size="icon"
-              className="relative rounded-full border-charcoal/10 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition hover:-translate-y-0.5 hover:border-gold/30 hover:bg-white md:hidden"
-              aria-label="Ouvrir le panier"
-            >
-              <AppIcon icon="solar:bag-4-linear" className="size-4" />
-              {itemCount > 0 && (
-                <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-gold text-[11px] font-bold text-charcoal">
-                  {itemCount}
-                </span>
-              )}
+              </Link>
             </Button>
             <MobileDrawer />
           </div>
