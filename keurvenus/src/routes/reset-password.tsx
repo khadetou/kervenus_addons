@@ -67,7 +67,7 @@ function ResetPasswordPage() {
           votre clé de réinitialisation Kër Venus.
         </p>
 
-        <Card className="mt-8 rounded-[2rem] border-white/75 bg-ivory/80 p-0 shadow-soft">
+        <Card className="mt-8 rounded-[2rem] border-white/75 bg-ivory/80 p-0 text-charcoal shadow-soft">
           <CardHeader className="gap-4 p-5 md:flex-row md:items-center">
             <div className="grid size-12 place-items-center rounded-full bg-gold/15 text-gold">
               <AppIcon icon="solar:restart-circle-linear" className="size-6" />
@@ -111,7 +111,7 @@ function ResetPasswordPage() {
                         type={showPassword ? "text" : "password"}
                         autoComplete="new-password"
                         placeholder="8 caractères minimum"
-                        className="h-13 rounded-full border-charcoal/10 bg-white pl-12 pr-12"
+                        className="h-13 rounded-full border-charcoal/10 bg-white pl-12 pr-12 text-charcoal placeholder:text-warm-gray"
                         required
                       />
                       <button
@@ -136,7 +136,7 @@ function ResetPasswordPage() {
                       type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
                       placeholder="Confirmer"
-                      className="h-13 rounded-full border-charcoal/10 bg-white px-5"
+                      className="h-13 rounded-full border-charcoal/10 bg-white px-5 text-charcoal placeholder:text-warm-gray"
                       required
                     />
                   </div>
@@ -167,7 +167,7 @@ function ResetPasswordPage() {
                       type="email"
                       autoComplete="username"
                       placeholder="nom@email.com"
-                      className="h-13 rounded-full border-charcoal/10 bg-white pl-12"
+                      className="h-13 rounded-full border-charcoal/10 bg-white pl-12 text-charcoal placeholder:text-warm-gray"
                       required
                     />
                   </div>

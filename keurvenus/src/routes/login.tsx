@@ -94,7 +94,7 @@ function LoginPage() {
           boutique. La session est validée en arrière-plan.
         </p>
 
-        <Card className="mt-8 rounded-[2rem] border-white/75 bg-ivory/80 p-0 shadow-soft">
+        <Card className="mt-8 rounded-[2rem] border-white/75 bg-ivory/80 p-0 text-charcoal shadow-soft">
           <CardHeader className="gap-4 p-5 md:flex-row md:items-center">
             <div className="grid size-12 place-items-center rounded-full bg-gold/15 text-gold">
               <AppIcon icon="solar:lock-password-linear" className="size-6" />
@@ -123,7 +123,7 @@ function LoginPage() {
                     type={usesPhoneAuth ? "tel" : "email"}
                     autoComplete="username"
                     placeholder={usesPhoneAuth ? "77 000 00 00" : "nom@email.com"}
-                    className="h-13 rounded-full border-charcoal/10 bg-white pl-12"
+                    className="h-13 rounded-full border-charcoal/10 bg-white pl-12 text-charcoal placeholder:text-warm-gray"
                     required
                   />
                 </div>
@@ -141,7 +141,7 @@ function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     placeholder="Mot de passe"
-                    className="h-13 rounded-full border-charcoal/10 bg-white pl-12 pr-14"
+                    className="h-13 rounded-full border-charcoal/10 bg-white pl-12 pr-14 text-charcoal placeholder:text-warm-gray"
                     required
                   />
                   <button

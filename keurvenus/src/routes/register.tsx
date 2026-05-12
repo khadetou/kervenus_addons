@@ -69,7 +69,7 @@ function RegisterPage() {
           factures et garder vos favoris synchronisés dans la boutique.
         </p>
 
-        <Card className="mt-8 rounded-[2rem] border-white/75 bg-ivory/80 p-0 shadow-soft">
+        <Card className="mt-8 rounded-[2rem] border-white/75 bg-ivory/80 p-0 text-charcoal shadow-soft">
           <CardHeader className="gap-4 p-5 md:flex-row md:items-center">
             <div className="grid size-12 place-items-center rounded-full bg-gold/15 text-gold">
               <AppIcon icon="solar:user-plus-rounded-linear" className="size-6" />
@@ -95,7 +95,7 @@ function RegisterPage() {
                     name="name"
                     autoComplete="name"
                     placeholder="Votre nom"
-                    className="h-13 rounded-full border-charcoal/10 bg-white pl-12"
+                    className="h-13 rounded-full border-charcoal/10 bg-white pl-12 text-charcoal placeholder:text-warm-gray"
                     required
                   />
                 </div>
@@ -115,7 +115,7 @@ function RegisterPage() {
                     type={usesPhoneAuth ? "tel" : "email"}
                     autoComplete="username"
                     placeholder={usesPhoneAuth ? "77 000 00 00" : "nom@email.com"}
-                    className="h-13 rounded-full border-charcoal/10 bg-white pl-12"
+                    className="h-13 rounded-full border-charcoal/10 bg-white pl-12 text-charcoal placeholder:text-warm-gray"
                     required
                   />
                 </div>
@@ -134,7 +134,7 @@ function RegisterPage() {
                       type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
                       placeholder="8 caractères minimum"
-                      className="h-13 rounded-full border-charcoal/10 bg-white pl-12 pr-12"
+                      className="h-13 rounded-full border-charcoal/10 bg-white pl-12 pr-12 text-charcoal placeholder:text-warm-gray"
                       required
                     />
                     <button
@@ -160,7 +160,7 @@ function RegisterPage() {
                       type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
                       placeholder="Confirmer"
-                      className="h-13 rounded-full border-charcoal/10 bg-white px-5"
+                      className="h-13 rounded-full border-charcoal/10 bg-white px-5 text-charcoal placeholder:text-warm-gray"
                       required
                     />
                   </div>
