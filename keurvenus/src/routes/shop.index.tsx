@@ -97,7 +97,7 @@ function ShopPage() {
   const routeSearch = Route.useSearch()
   const { data: storefrontConfig } = useStorefrontConfig()
   const pageSize = storefrontConfig?.shopPageSize ?? 24
-  const paginationType = storefrontConfig?.paginationType ?? "pagination"
+  const paginationType = storefrontConfig?.paginationType ?? "infinite_scroll"
   const isInfiniteScroll = paginationType === "infinite_scroll"
   const [page, setPage] = useState(routeSearch.page || 1)
   const [category, setCategory] = useState(routeSearch.category || allCategoriesValue)

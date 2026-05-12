@@ -102,7 +102,7 @@ export function UserPortalDropdown({ buttonClassName }: UserPortalDropdownProps)
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-72 rounded-[1.35rem] border-white/75 bg-ivory/96 p-2 shadow-luxury backdrop-blur-xl"
+        className="w-72 rounded-[1.35rem] border-white/75 bg-ivory/96 p-2 text-charcoal shadow-luxury backdrop-blur-xl"
       >
         <DropdownMenuLabel className="rounded-2xl bg-white/70 p-4">
           <span className="block text-[11px] uppercase tracking-[0.2em] text-gold">
@@ -117,10 +117,10 @@ export function UserPortalDropdown({ buttonClassName }: UserPortalDropdownProps)
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="my-2 bg-charcoal/8" />
         {portalItems.map((item) => (
-          <DropdownMenuItem key={item.href} asChild className="rounded-xl p-0">
+          <DropdownMenuItem key={item.href} asChild className="rounded-xl p-0 text-charcoal focus:bg-champagne/45 focus:text-charcoal">
             <a
               href={item.href}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-charcoal transition hover:bg-white/70"
             >
               <AppIcon icon={item.icon} className="size-4 text-gold" />
               {item.label}
@@ -130,7 +130,7 @@ export function UserPortalDropdown({ buttonClassName }: UserPortalDropdownProps)
         {isInternalUser ? (
           <>
             <DropdownMenuSeparator className="my-2 bg-charcoal/8" />
-            <DropdownMenuItem asChild className="rounded-xl p-0">
+            <DropdownMenuItem asChild className="rounded-xl p-0 text-charcoal focus:bg-champagne/45 focus:text-charcoal">
               <a
                 href={backofficeUrl}
                 className="flex w-full items-center gap-3 rounded-xl bg-champagne px-3 py-2.5 text-sm font-medium text-charcoal transition hover:bg-gold"
@@ -143,7 +143,7 @@ export function UserPortalDropdown({ buttonClassName }: UserPortalDropdownProps)
         ) : null}
         <DropdownMenuSeparator className="my-2 bg-charcoal/8" />
         <DropdownMenuItem
-          className="rounded-xl px-3 py-2.5 text-sm text-warm-gray focus:text-charcoal"
+          className="rounded-xl px-3 py-2.5 text-sm text-warm-gray focus:bg-champagne/45 focus:text-charcoal"
           onClick={() => logout.mutate()}
         >
           <AppIcon icon="solar:logout-2-linear" className="size-4 text-gold" />

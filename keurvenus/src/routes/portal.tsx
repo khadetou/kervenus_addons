@@ -133,7 +133,7 @@ function PortalIndex() {
   return (
     <PortalShell>
       <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-[2.2rem] border border-white/75 bg-white/72 p-6 shadow-luxury md:p-8">
+        <div className="rounded-[2.2rem] border border-white/75 bg-white/72 p-6 text-charcoal shadow-luxury md:p-8">
           <p className="text-xs uppercase tracking-[0.24em] text-gold">
             espace client
           </p>
@@ -172,25 +172,25 @@ function PortalIndex() {
       </section>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6" id="orders">
-        <TabsList className="grid !h-auto w-full grid-cols-1 items-stretch gap-2 rounded-[1.6rem] border border-white/80 bg-white/72 p-2 shadow-soft backdrop-blur md:grid-cols-3">
+        <TabsList className="grid !h-auto w-full grid-cols-1 items-stretch gap-2 rounded-[1.6rem] border border-white/80 bg-white/72 p-2 text-charcoal shadow-soft backdrop-blur md:grid-cols-3">
           {portalTabs.map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
               id={tab.value}
-              className="group !h-auto min-h-[5.25rem] justify-start rounded-[1.15rem] border border-transparent bg-ivory/65 px-4 py-3 text-left text-charcoal/68 shadow-none hover:border-gold/15 hover:bg-white data-active:border-charcoal data-active:bg-charcoal data-active:text-ivory data-active:shadow-soft"
+              className="group !h-auto min-h-[5.25rem] justify-start rounded-[1.15rem] border border-transparent bg-ivory/65 px-4 py-3 text-left text-charcoal shadow-none hover:border-gold/15 hover:bg-white data-[state=active]:!border-charcoal data-[state=active]:!bg-charcoal data-[state=active]:!text-ivory data-[state=active]:shadow-soft"
             >
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-gold shadow-[inset_0_0_0_1px_rgba(32,27,24,0.06)] group-data-active:bg-white/10 group-data-active:text-champagne group-data-active:shadow-none">
+              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-gold shadow-[inset_0_0_0_1px_rgba(32,27,24,0.06)] group-data-[state=active]:bg-white/10 group-data-[state=active]:text-champagne group-data-[state=active]:shadow-none">
                 <AppIcon icon={tab.icon} className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-3">
                   <span className="truncate text-base font-semibold">{tab.label}</span>
-                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-charcoal group-data-active:bg-white/12 group-data-active:text-ivory">
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-charcoal group-data-[state=active]:bg-white/12 group-data-[state=active]:text-ivory">
                     {tab.count}
                   </span>
                 </span>
-                <span className="mt-1 block truncate text-[11px] uppercase tracking-[0.16em] text-warm-gray group-data-active:text-ivory/56">
+                <span className="mt-1 block truncate text-[11px] uppercase tracking-[0.16em] text-warm-gray group-data-[state=active]:text-ivory/56">
                   {tab.description}
                 </span>
               </span>
@@ -251,7 +251,7 @@ function DocumentGrid({
 }) {
   if (isLoading) {
     return (
-      <div className="grid gap-3 rounded-[2rem] border border-white/75 bg-white/70 p-3 shadow-soft">
+      <div className="grid gap-3 rounded-[2rem] border border-white/75 bg-white/70 p-3 text-charcoal shadow-soft">
         {[1, 2, 3].map((item) => (
           <div key={item} className="h-28 animate-pulse rounded-[1.45rem] bg-ivory/75" />
         ))}
@@ -261,7 +261,7 @@ function DocumentGrid({
 
   if (!documents.length) {
     return (
-      <div className="rounded-[2rem] border border-dashed border-charcoal/15 bg-white/60 p-8 text-center">
+      <div className="rounded-[2rem] border border-dashed border-charcoal/15 bg-white/60 p-8 text-center text-charcoal">
         <p className="font-serif text-3xl">{emptyLabel}</p>
         <Button asChild className="mt-5 rounded-full bg-charcoal text-ivory">
           <Link to="/shop">Découvrir la boutique</Link>
@@ -271,7 +271,7 @@ function DocumentGrid({
   }
 
   return (
-    <div className="grid gap-3 rounded-[2rem] border border-white/75 bg-white/70 p-3 shadow-soft">
+    <div className="grid gap-3 rounded-[2rem] border border-white/75 bg-white/70 p-3 text-charcoal shadow-soft">
       {documents.map((document) => (
         <DocumentCard key={`${type}-${document.id}`} document={document} type={type} />
       ))}
@@ -291,7 +291,7 @@ function DocumentCard({ document, type }: { document: PortalDocument; type: Docu
   const reference = document.payment_reference || document.invoice_origin
 
   return (
-    <article className="grid gap-4 rounded-[1.55rem] border border-charcoal/8 bg-white/82 p-4 shadow-[0_18px_42px_rgba(32,27,24,0.06)] transition hover:-translate-y-0.5 hover:border-gold/22 hover:bg-white md:grid-cols-[minmax(0,1.2fr)_0.75fr_0.7fr_auto] md:items-center">
+    <article className="grid gap-4 rounded-[1.55rem] border border-charcoal/8 bg-white/82 p-4 text-charcoal shadow-[0_18px_42px_rgba(32,27,24,0.06)] transition hover:-translate-y-0.5 hover:border-gold/22 hover:bg-white md:grid-cols-[minmax(0,1.2fr)_0.75fr_0.7fr_auto] md:items-center">
       <div className="min-w-0">
         <Badge className="rounded-full bg-gold/14 text-charcoal">
           {type === "invoice" ? "Facture" : type === "quote" ? "Devis" : "Commande"}
@@ -434,7 +434,7 @@ function EmptyPortal({
   title: string
 }) {
   return (
-    <section className="grid min-h-[560px] place-items-center rounded-[2.3rem] border border-white/75 bg-white/70 p-8 text-center shadow-luxury">
+    <section className="grid min-h-[560px] place-items-center rounded-[2.3rem] border border-white/75 bg-white/70 p-8 text-center text-charcoal shadow-luxury">
       <div className="max-w-xl">
         <AppIcon icon={icon} className="mx-auto size-12 text-gold" />
         <h1 className="mt-5 font-serif text-5xl leading-none md:text-6xl">{title}</h1>

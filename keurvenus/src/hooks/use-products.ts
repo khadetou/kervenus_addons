@@ -145,7 +145,7 @@ export function useStorefrontConfig() {
     queryKey: ["storefront", "config"],
     queryFn: async () =>
       getOdooStorefrontConfig().catch(() => ({
-        paginationType: "pagination" as const,
+        paginationType: "infinite_scroll" as const,
         shopPageSize: 24,
         authMode: "email_password" as const,
         signupEnabled: true,
